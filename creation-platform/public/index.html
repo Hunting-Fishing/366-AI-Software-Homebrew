@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creation Platform — AI App Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117; --panel: #181b24; --panel2: #1f2330;
+    --border: #2a2f3f; --text: #e8eaf0; --muted: #8b91a5;
+    --accent: #6c7bff; --accent2: #8a5cf6; --good: #3ecf8e;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+
+  header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
+  header h1 { font-size: 16px; font-weight: 700; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header .spacer { flex: 1; }
+  select, button { font: inherit; border-radius: 8px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); padding: 7px 12px; cursor: pointer; }
+  button.primary { background: linear-gradient(90deg, var(--accent), var(--accent2)); border: none; font-weight: 600; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #left { width: 380px; min-width: 300px; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--panel); }
+  #chat { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { padding: 10px 12px; border-radius: 10px; font-size: 14px; line-height: 1.45; max-width: 95%; white-space: pre-wrap; }
+  .msg.user { background: var(--accent); color: #fff; align-self: flex-end; }
+  .msg.bot  { background: var(--panel2); border: 1px solid var(--border); align-self: flex-start; }
+  .msg.err  { background: #3a1d24; border: 1px solid #6e2a3a; color: #ff9db0; align-self: flex-start; }
+
+  #inputRow { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+  #promptBox { flex: 1; resize: none; height: 64px; font: inherit; font-size: 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px; }
+  #promptBox:focus { outline: 2px solid var(--accent); }
+
+  #right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
+  #toolbar .status { font-size: 12px; color: var(--muted); margin-left: auto; }
+  #preview { flex: 1; border: none; background: #fff; }
+  #codeWrap { flex: 1; display: none; flex-direction: column; min-height: 0; background: #0b0d13; }
+  #fileTabs { display: flex; gap: 4px; padding: 8px 12px 0; flex-wrap: wrap; }
+  #fileTabs button { font-size: 12px; padding: 5px 10px; border-radius: 6px 6px 0 0; }
+  #fileTabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #codeView { flex: 1; overflow: auto; margin: 0; padding: 16px; font: 12px/1.5 ui-monospace, Consolas, monospace; color: #c9d4ff; white-space: pre-wrap; word-break: break-all; }
+  #runHint { display: none; padding: 10px 14px; font-size: 13px; color: var(--good); background: #12241c; border-top: 1px solid var(--border); }
+
+  #empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); background: var(--bg); }
+  #empty .big { font-size: 40px; }
+  #empty .ideas { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 0 30px; }
+  #empty .ideas button { font-size: 13px; }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--muted); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 800px) {
+    main { flex-direction: column; }
+    #left { width: 100%; height: 45%; border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ Creation Platform</h1>
+  <span class="spacer"></span>
+  <select id="targetSel" title="What kind of code to generate"></select>
+  <select id="providerSel" title="Which AI builds it"></select>
+  <select id="projectSel" title="Load a saved project"><option value="">Load project…</option></select>
+  <button id="saveBtn" disabled>💾 Save</button>
+  <button id="downloadBtn" disabled>⬇ Download</button>
+  <button id="publishBtn" disabled title="Put this app on the public web (needs NETLIFY_TOKEN in .env)">🚀 Publish</button>
+</header>
+
+<main>
+  <div id="left">
+    <div id="chat">
+      <div class="msg bot">Hi! Pick a language target (Web = instant preview, Flutter = native mobile, Python = Flask), describe what you want, and watch the code get written live. Then tell me what to change.</div>
+    </div>
+    <div id="inputRow">
+      <textarea id="promptBox" placeholder="e.g. A workout tracker with a weekly calendar and progress charts"></textarea>
+      <button class="primary" id="sendBtn">Build</button>
+    </div>
+  </div>
+
+  <div id="right">
+    <div id="toolbar">
+      <button id="previewTab">👁 Preview</button>
+      <button id="codeTab">&lt;/&gt; Code</button>
+      <span class="status" id="status"></span>
+    </div>
+    <div id="empty">
+      <div class="big">🛠️</div>
+      <div>Your project will appear here</div>
+      <div class="ideas">
+        <button onclick="useIdea('A pomodoro focus timer with task list')">Pomodoro timer</button>
+        <button onclick="useIdea('A recipe box app with search and categories')">Recipe box</button>
+        <button onclick="useIdea('A 2D breakout game with levels and scores')">Breakout game</button>
+        <button onclick="useIdea('An expense tracker with monthly charts')">Expense tracker</button>
+      </div>
+    </div>
+    <iframe id="preview" sandbox="allow-scripts" style="display:none"></iframe>
+    <div id="codeWrap">
+      <div id="fileTabs"></div>
+      <pre id="codeView"></pre>
+      <div id="runHint"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ---- state ----
+let project = null;      // { target, code (web) OR files [{path,content}] }
+let firstPrompt = "";
+let busy = false;
+let targetsInfo = [];    // from /api/health
+let imageProviders = []; // from /api/health
+let healthInfo = {};     // full /api/health payload
+let lastKeyframes = [];  // [{id, b64, videoPrompt}] after keyframe generation
+let activeFile = 0;
+
+const $ = (id) => document.getElementById(id);
+
+async function init() {
+  const health = await fetch("/api/health").then(r => r.json());
+  targetsInfo = health.targets;
+  imageProviders = health.imageProviders || [];
+  healthInfo = health;
+
+  const tSel = $("targetSel");
+  tSel.innerHTML = "";
+  for (const t of health.targets) {
+    const opt = document.createElement("option");
+    opt.value = t.id;
+    opt.textContent = t.label;
+    tSel.appendChild(opt);
+  }
+
+  const pSel = $("providerSel");
+  pSel.innerHTML = "";
+  for (const p of health.providers) {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = (p.configured ? "🟢 " : "⚪ ") + p.label;
+    opt.disabled = !p.configured;
+    pSel.appendChild(opt);
+  }
+  const firstOk = health.providers.find(p => p.configured);
+  if (firstOk) pSel.value = firstOk.id;
+  else addMsg("err", "No API keys found. Add at least one key to the .env file, then restart the server.");
+  refreshProjects();
+}
+
+async function refreshProjects() {
+  const projects = await fetch("/api/projects").then(r => r.json());
+  const sel = $("projectSel");
+  sel.innerHTML = '<option value="">Load project…</option>';
+  for (const p of projects) {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  }
+}
+
+function addMsg(kind, text) {
+  const div = document.createElement("div");
+  div.className = "msg " + kind;
+  div.textContent = text;
+  $("chat").appendChild(div);
+  $("chat").scrollTop = $("chat").scrollHeight;
+  return div;
+}
+
+function targetInfo(id) { return targetsInfo.find(t => t.id === id) || targetsInfo[0]; }
+function isWeb(p) { return p && p.target === "web"; }
+
+function showTab(which) {
+  $("preview").style.display = which === "preview" ? "" : "none";
+  $("codeWrap").style.display = which === "code" ? "flex" : "none";
+}
+
+function renderFileTabs() {
+  const tabs = $("fileTabs");
+  tabs.innerHTML = "";
+  if (!project || isWeb(project)) return;
+  project.files.forEach((f, i) => {
+    const b = document.createElement("button");
+    b.textContent = f.path;
+    b.className = i === activeFile ? "active" : "";
+    b.onclick = () => { activeFile = i; renderProject(); showTab("code"); };
+    tabs.appendChild(b);
+  });
+}
+
+function renderProject() {
+  $("empty").style.display = "none";
+  $("saveBtn").disabled = false;
+  $("downloadBtn").disabled = false;
+  $("publishBtn").disabled = !isWeb(project);
+
+  if (isWeb(project)) {
+    $("preview").removeAttribute("src");
+    $("preview").setAttribute("sandbox", "allow-scripts");
+    $("preview").srcdoc = project.code;
+    $("codeView").textContent = project.code;
+    $("fileTabs").innerHTML = "";
+    $("runHint").style.display = "none";
+    showTab("preview");
+  } else {
+    // Flutter / Python: show files + run instructions.
+    const file = project.files[activeFile] || project.files[0];
+    $("codeView").textContent = file ? file.content : "";
+    renderFileTabs();
+    const info = targetInfo(project.target);
+    $("runHint").textContent = "▶ How to run: " + info.runInstructions + " ";
+    if (project.target === "python") {
+      const b = document.createElement("button");
+      b.textContent = "🌐 Run in browser";
+      b.onclick = runPythonPreview;
+      $("runHint").appendChild(b);
+    }
+    if (project.target === "video" && imageProviders.some(p => p.configured)) {
+      const b = document.createElement("button");
+      b.textContent = "🖼 Generate keyframes";
+      b.onclick = generateKeyframes;
+      $("runHint").appendChild(b);
+    }
+    $("runHint").style.display = "block";
+    showTab("code");
+  }
+}
+
+// ---- generation (streaming) ----
+async function send() {
+  const promptText = $("promptBox").value.trim();
+  if (!promptText || busy) return;
+  busy = true;
+  $("sendBtn").disabled = true;
+  $("promptBox").value = "";
+  addMsg("user", promptText);
+
+  const targetId = project ? project.target : $("targetSel").value;
+  if (!project) firstPrompt = promptText;
+
+  stopPreview();
+  const thinking = addMsg("bot", "");
+  thinking.innerHTML = '<span class="spinner"></span>Writing your ' + targetInfo(targetId).label.replace(/^[^ ]+ /, "") + ' live — watch the Code tab…';
+  $("status").textContent = "Streaming from " + $("providerSel").selectedOptions[0].textContent;
+
+  $("empty").style.display = "none";
+  $("fileTabs").innerHTML = "";
+  $("runHint").style.display = "none";
+  $("codeView").textContent = "";
+  showTab("code");
+
+  try {
+    const body = { provider: $("providerSel").value, prompt: promptText, target: targetId };
+    if (project && isWeb(project)) body.currentCode = project.code;
+    if (project && !isWeb(project)) body.currentFiles = project.files;
+
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || "Request failed");
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "", streamed = "", result = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const event = JSON.parse(line.slice(5));
+        if (event.type === "chunk") {
+          streamed += event.text;
+          $("codeView").textContent = streamed;
+          $("codeView").scrollTop = $("codeView").scrollHeight;
+        } else if (event.type === "fixing") {
+          streamed = "";
+          $("codeView").textContent = "";
+          thinking.innerHTML = '<span class="spinner"></span>Found errors in the generated code — auto-fixing…';
+        } else if (event.type === "done") {
+          result = event;
+        } else if (event.type === "error") {
+          throw new Error(event.message);
+        }
+      }
+    }
+
+    if (!result) throw new Error("The stream ended without a finished project. Try again.");
+    const hadProject = Boolean(project);
+    project = result.code !== undefined
+      ? { target: result.target, code: result.code, files: [] }
+      : { target: result.target, code: "", files: result.files };
+    activeFile = 0;
+    renderProject();
+    thinking.textContent = hadProject
+      ? "✅ Updated! Anything else?"
+      : (isWeb(project)
+          ? "✅ Done! Tell me what to change, or save/download it."
+          : "✅ Done! " + project.files.length + " files generated. Check the Code tab, download the ZIP, and see the run instructions at the bottom.");
+    $("status").textContent = "";
+  } catch (err) {
+    thinking.remove();
+    addMsg("err", "⚠️ " + err.message);
+    $("status").textContent = "";
+    if (project) renderProject(); // restore last good state
+  }
+  busy = false;
+  $("sendBtn").disabled = false;
+}
+
+function useIdea(text) { $("promptBox").value = text; send(); }
+
+// ---- live Python preview (web-based, no ZIP needed) ----
+async function runPythonPreview() {
+  const note = addMsg("bot", "");
+  note.innerHTML = '<span class="spinner"></span>Starting your app on this machine…';
+  try {
+    const res = await fetch("/api/preview", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ files: project.files }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Preview failed");
+    const iframe = $("preview");
+    iframe.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin");
+    iframe.removeAttribute("srcdoc");
+    iframe.src = data.url;
+    showTab("preview");
+    note.textContent = "🌐 Running live in the preview! (It runs locally on this machine — it stops when you build something new.)";
+  } catch (err) {
+    note.textContent = "⚠️ " + err.message;
+    note.className = "msg err";
+  }
+}
+
+// ---- keyframe generation for video projects ----
+async function generateKeyframes() {
+  const sceneFile = project.files.find(f => f.path === "scenes.json");
+  if (!sceneFile) { addMsg("err", "No scenes.json found in this project."); return; }
+  let scenes;
+  try { scenes = JSON.parse(sceneFile.content); } catch { addMsg("err", "scenes.json is not valid JSON — ask me to fix it."); return; }
+  if (!Array.isArray(scenes) || scenes.length === 0) { addMsg("err", "scenes.json has no scenes."); return; }
+
+  const imgProvider = imageProviders.find(p => p.configured);
+  const note = addMsg("bot", "");
+  const images = [];
+
+  for (let i = 0; i < scenes.length; i++) {
+    note.innerHTML = '<span class="spinner"></span>Generating keyframe ' + (i + 1) + " of " + scenes.length + " with " + imgProvider.label + "… (costs a few cents each)";
+    try {
+      const res = await fetch("/api/image", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ provider: imgProvider.id, prompt: scenes[i].keyframe_prompt || "" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "image failed");
+      images.push({ id: scenes[i].id ?? i + 1, b64: data.b64, error: null, videoPrompt: scenes[i].video_prompt || "" });
+    } catch (err) {
+      images.push({ id: scenes[i].id ?? i + 1, b64: null, error: err.message, videoPrompt: "" });
+    }
+  }
+  lastKeyframes = images.filter(im => im.b64);
+
+  const ok = images.filter(im => im.b64).length;
+  note.textContent = "🖼 Keyframes done: " + ok + "/" + scenes.length + " generated (Preview tab; right-click to save). ";
+  const veoReady = (healthInfo.videoProviders || []).some(p => p.configured);
+  if (ok > 0 && veoReady && healthInfo.ffmpeg) {
+    const b = document.createElement("button");
+    b.textContent = "🎞 Animate & assemble movie";
+    b.onclick = () => animateAndAssemble(note);
+    note.appendChild(b);
+  } else if (ok > 0) {
+    note.textContent += veoReady ? "Install FFmpeg to enable auto-assembly (winget install ffmpeg)." : "Animate them with Veo/Runway/Kling per production-guide.md.";
+  }
+
+  const cells = images.map(im => im.b64
+    ? '<figure><img src="data:image/png;base64,' + im.b64 + '"><figcaption>Scene ' + im.id + '</figcaption></figure>'
+    : '<figure class="err"><div>Scene ' + im.id + ' failed:<br>' + String(im.error).slice(0, 200) + '</div></figure>'
+  ).join("");
+  const gallery = "<!DOCTYPE html><html><head><style>body{font-family:sans-serif;background:#111;color:#eee;margin:16px}h2{font-weight:600}div.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}figure{margin:0;background:#1c1c22;border-radius:10px;padding:10px}img{width:100%;border-radius:6px}figcaption{margin-top:6px;font-size:13px;color:#aaa}figure.err div{color:#ff9db0;font-size:12px}</style></head><body><h2>🎬 Scene keyframes</h2><div class='grid'>" + cells + "</div></body></html>";
+
+  const iframe = $("preview");
+  iframe.removeAttribute("src");
+  iframe.setAttribute("sandbox", "allow-scripts");
+  iframe.srcdoc = gallery;
+  showTab("preview");
+}
+
+// ---- animate keyframes with Veo, then stitch with FFmpeg ----
+async function animateAndAssemble(prevNote) {
+  if (!confirm("Animate " + lastKeyframes.length + " scenes with Veo? Video generation costs real money (roughly $1-3 per scene) and takes a few minutes.")) return;
+  const note = addMsg("bot", "");
+  const clips = [];
+  for (let i = 0; i < lastKeyframes.length; i++) {
+    const kf = lastKeyframes[i];
+    note.innerHTML = '<span class="spinner"></span>Animating scene ' + kf.id + " (" + (i + 1) + "/" + lastKeyframes.length + ")… this takes 1–3 minutes per scene.";
+    try {
+      const res = await fetch("/api/video/animate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ scene: kf.id, prompt: kf.videoPrompt, imageB64: kf.b64 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "animate failed");
+      clips.push(data.file);
+    } catch (err) {
+      addMsg("err", "⚠️ Scene " + kf.id + ": " + err.message);
+    }
+  }
+  if (clips.length === 0) { note.textContent = "⚠️ No scenes were animated."; note.className = "msg err"; return; }
+
+  note.innerHTML = '<span class="spinner"></span>Stitching ' + clips.length + " clips with FFmpeg…";
+  try {
+    const res = await fetch("/api/video/assemble", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ files: clips }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "assembly failed");
+    note.textContent = "🎬 Your movie is ready! Playing in the Preview tab. File saved in the platform's media folder: " + data.file;
+    const iframe = $("preview");
+    iframe.removeAttribute("src");
+    iframe.setAttribute("sandbox", "allow-scripts");
+    iframe.srcdoc = "<!DOCTYPE html><body style='margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh'><video src='" + data.file + "' controls autoplay style='max-width:100%;max-height:100%'></video></body>";
+    showTab("preview");
+  } catch (err) {
+    note.textContent = "⚠️ " + err.message;
+    note.className = "msg err";
+  }
+}
+
+function stopPreview() {
+  fetch("/api/preview", { method: "DELETE" }).catch(() => {});
+  const iframe = $("preview");
+  iframe.removeAttribute("src");
+  iframe.setAttribute("sandbox", "allow-scripts");
+}
+
+// ---- toolbar ----
+$("sendBtn").onclick = send;
+$("promptBox").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+});
+$("previewTab").onclick = () => { if (project && isWeb(project)) showTab("preview"); };
+$("codeTab").onclick = () => { if (project) showTab("code"); };
+
+// New project when target changes (a Flutter app can't continue a web chat).
+$("targetSel").onchange = () => {
+  stopPreview();
+  if (project) {
+    project = null;
+    $("saveBtn").disabled = true;
+    $("downloadBtn").disabled = true;
+    $("empty").style.display = "flex";
+    $("preview").style.display = "none";
+    $("codeWrap").style.display = "none";
+    addMsg("bot", "🆕 New " + targetInfo($("targetSel").value).label + " project — describe what to build.");
+  }
+};
+
+$("downloadBtn").onclick = async () => {
+  if (isWeb(project)) {
+    const blob = new Blob([project.code], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "my-app.html";
+    a.click();
+  } else {
+    const zip = new JSZip();
+    for (const f of project.files) zip.file(f.path, f.content);
+    const blob = await zip.generateAsync({ type: "blob" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "my-" + project.target + "-app.zip";
+    a.click();
+  }
+};
+
+$("publishBtn").onclick = async () => {
+  if (!project || !isWeb(project)) return;
+  const name = prompt("Site name (becomes part of the web address):", firstPrompt.slice(0, 30));
+  if (!name) return;
+  if (!confirm("Publish this app to the PUBLIC web? Anyone with the link can see it.")) return;
+  const note = addMsg("bot", "");
+  note.innerHTML = '<span class="spinner"></span>Publishing to the web…';
+  try {
+    const res = await fetch("/api/publish", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name, code: project.code }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Publish failed");
+    note.textContent = "🚀 Live on the web: ";
+    const a = document.createElement("a");
+    a.href = data.url;
+    a.target = "_blank";
+    a.textContent = data.url;
+    a.style.color = "#9db4ff";
+    note.appendChild(a);
+  } catch (err) {
+    note.textContent = "⚠️ " + err.message;
+    note.className = "msg err";
+  }
+};
+
+$("saveBtn").onclick = async () => {
+  const name = prompt("Name this project:", firstPrompt.slice(0, 40));
+  if (!name) return;
+  await fetch("/api/projects", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name, prompt: firstPrompt, target: project.target, code: project.code, files: project.files }),
+  });
+  refreshProjects();
+  addMsg("bot", "💾 Saved as “" + name + "”.");
+};
+
+$("projectSel").onchange = async (e) => {
+  if (!e.target.value) return;
+  const p = await fetch("/api/projects/" + e.target.value).then(r => r.json());
+  firstPrompt = p.prompt || p.name;
+  project = { target: p.target || "web", code: p.code || "", files: p.files || [] };
+  activeFile = 0;
+  $("targetSel").value = project.target;
+  renderProject();
+  addMsg("bot", "📂 Loaded “" + p.name + "”. Tell me what to change.");
+  e.target.value = "";
+};
+
+init();
+</script>
+</body>
+</html>

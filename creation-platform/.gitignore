@@ -1,0 +1,12 @@
+# Secrets — NEVER commit API keys
+.env
+
+# Dependencies (restored with: npm install)
+node_modules/
+
+# User-generated projects (local data, not source code)
+projects/
+
+# OS noise
+.DS_Store
+Thumbs.db

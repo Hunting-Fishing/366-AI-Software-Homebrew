@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI App Builder</title>
+<style>
+  :root {
+    --bg: #0f1117; --panel: #181b24; --panel2: #1f2330;
+    --border: #2a2f3f; --text: #e8eaf0; --muted: #8b91a5;
+    --accent: #6c7bff; --accent2: #8a5cf6; --good: #3ecf8e;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  header h1 { font-size: 16px; font-weight: 700; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header .spacer { flex: 1; }
+  select, button { font: inherit; border-radius: 8px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); padding: 7px 12px; cursor: pointer; }
+  button.primary { background: linear-gradient(90deg, var(--accent), var(--accent2)); border: none; font-weight: 600; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  #left { width: 380px; min-width: 300px; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--panel); }
+  #chat { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { padding: 10px 12px; border-radius: 10px; font-size: 14px; line-height: 1.45; max-width: 95%; white-space: pre-wrap; }
+  .msg.user { background: var(--accent); color: #fff; align-self: flex-end; }
+  .msg.bot  { background: var(--panel2); border: 1px solid var(--border); align-self: flex-start; }
+  .msg.err  { background: #3a1d24; border: 1px solid #6e2a3a; color: #ff9db0; align-self: flex-start; }
+
+  #inputRow { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+  #promptBox { flex: 1; resize: none; height: 64px; font: inherit; font-size: 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px; }
+  #promptBox:focus { outline: 2px solid var(--accent); }
+
+  #right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  #toolbar .status { font-size: 12px; color: var(--muted); margin-left: auto; }
+  #preview { flex: 1; border: none; background: #fff; }
+  #codeView { flex: 1; display: none; overflow: auto; margin: 0; padding: 16px; font: 12px/1.5 ui-monospace, Consolas, monospace; color: #c9d4ff; background: #0b0d13; white-space: pre-wrap; word-break: break-all; }
+
+  #empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); background: var(--bg); }
+  #empty .big { font-size: 40px; }
+  #empty .ideas { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 0 30px; }
+  #empty .ideas button { font-size: 13px; }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--muted); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 800px) {
+    main { flex-direction: column; }
+    #left { width: 100%; height: 45%; border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ AI App Builder</h1>
+  <span class="spacer"></span>
+  <select id="providerSel" title="Which AI builds your app"></select>
+  <select id="projectSel" title="Load a saved project"><option value="">Load project…</option></select>
+  <button id="saveBtn" disabled>💾 Save</button>
+  <button id="downloadBtn" disabled>⬇ Download</button>
+</header>
+
+<main>
+  <div id="left">
+    <div id="chat">
+      <div class="msg bot">Hi! Describe the app or website you want, and I'll build it. After it appears, just tell me what to change.</div>
+    </div>
+    <div id="inputRow">
+      <textarea id="promptBox" placeholder="e.g. A workout tracker with a weekly calendar and progress charts"></textarea>
+      <button class="primary" id="sendBtn">Build</button>
+    </div>
+  </div>
+
+  <div id="right">
+    <div id="toolbar">
+      <button id="previewTab">👁 Preview</button>
+      <button id="codeTab">&lt;/&gt; Code</button>
+      <span class="status" id="status"></span>
+    </div>
+    <div id="empty">
+      <div class="big">🛠️</div>
+      <div>Your app will appear here</div>
+      <div class="ideas">
+        <button onclick="useIdea('A pomodoro focus timer with task list')">Pomodoro timer</button>
+        <button onclick="useIdea('A recipe box app with search and categories')">Recipe box</button>
+        <button onclick="useIdea('A 2D breakout game with levels and scores')">Breakout game</button>
+        <button onclick="useIdea('A landing page for a coffee shop with menu')">Coffee shop site</button>
+      </div>
+    </div>
+    <iframe id="preview" sandbox="allow-scripts" style="display:none"></iframe>
+    <pre id="codeView"></pre>
+  </div>
+</main>
+
+<script>
+let currentCode = null;
+let firstPrompt = "";
+let busy = false;
+
+const $ = (id) => document.getElementById(id);
+
+// ---- load providers + saved projects on startup ----
+async function init() {
+  const health = await fetch("/api/health").then(r => r.json());
+  const sel = $("providerSel");
+  sel.innerHTML = "";
+  for (const p of health.providers) {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = (p.configured ? "🟢 " : "⚪ ") + p.label;
+    opt.disabled = !p.configured;
+    sel.appendChild(opt);
+  }
+  const firstOk = health.providers.find(p => p.configured);
+  if (firstOk) sel.value = firstOk.id;
+  else addMsg("err", "No API keys found. Add at least one key to the .env file, then restart the server.");
+  refreshProjects();
+}
+
+async function refreshProjects() {
+  const projects = await fetch("/api/projects").then(r => r.json());
+  const sel = $("projectSel");
+  sel.innerHTML = '<option value="">Load project…</option>';
+  for (const p of projects) {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  }
+}
+
+function addMsg(kind, text) {
+  const div = document.createElement("div");
+  div.className = "msg " + kind;
+  div.textContent = text;
+  $("chat").appendChild(div);
+  $("chat").scrollTop = $("chat").scrollHeight;
+  return div;
+}
+
+function showApp(code) {
+  currentCode = code;
+  $("empty").style.display = "none";
+  $("preview").style.display = "";
+  $("preview").srcdoc = code;
+  $("codeView").textContent = code;
+  $("saveBtn").disabled = false;
+  $("downloadBtn").disabled = false;
+}
+
+async function send() {
+  const prompt = $("promptBox").value.trim();
+  if (!prompt || busy) return;
+  busy = true;
+  $("sendBtn").disabled = true;
+  $("promptBox").value = "";
+  addMsg("user", prompt);
+  if (!currentCode) firstPrompt = prompt;
+
+  const thinking = addMsg("bot", "");
+  thinking.innerHTML = '<span class="spinner"></span>' + (currentCode ? "Updating your app…" : "Building your app… (20–60 seconds)");
+  $("status").textContent = "Generating with " + $("providerSel").selectedOptions[0].textContent;
+
+  try {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: $("providerSel").value, prompt, currentCode }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Something went wrong");
+    thinking.textContent = currentCode ? "✅ Updated! Anything else?" : "✅ Done! Tell me what to change, or save/download it.";
+    showApp(data.code);
+    $("status").textContent = "";
+  } catch (err) {
+    thinking.remove();
+    addMsg("err", "⚠️ " + err.message);
+    $("status").textContent = "";
+  }
+  busy = false;
+  $("sendBtn").disabled = false;
+}
+
+function useIdea(text) { $("promptBox").value = text; send(); }
+
+// ---- toolbar ----
+$("sendBtn").onclick = send;
+$("promptBox").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+});
+$("previewTab").onclick = () => { if (currentCode) { $("preview").style.display = ""; $("codeView").style.display = "none"; } };
+$("codeTab").onclick = () => { if (currentCode) { $("preview").style.display = "none"; $("codeView").style.display = "block"; } };
+
+$("downloadBtn").onclick = () => {
+  const blob = new Blob([currentCode], { type: "text/html" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "my-app.html";
+  a.click();
+};
+
+$("saveBtn").onclick = async () => {
+  const name = prompt("Name this project:", firstPrompt.slice(0, 40));
+  if (!name) return;
+  await fetch("/api/projects", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name, code: currentCode, prompt: firstPrompt }),
+  });
+  refreshProjects();
+  addMsg("bot", "💾 Saved as “" + name + "”.");
+};
+
+$("projectSel").onchange = async (e) => {
+  if (!e.target.value) return;
+  const p = await fetch("/api/projects/" + e.target.value).then(r => r.json());
+  firstPrompt = p.prompt || p.name;
+  showApp(p.code);
+  addMsg("bot", "📂 Loaded “" + p.name + "”. Tell me what to change.");
+  e.target.value = "";
+};
+
+init();
+</script>
+</body>
+</html>
