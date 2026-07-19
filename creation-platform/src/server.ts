@@ -11,6 +11,7 @@ import { config } from "./config.js";
 import { availableProviders } from "./providers/index.js";
 import { listTargets } from "./targets.js";
 import { JsonProjectStore } from "./services/projects.js";
+import { SupabaseProjectStore, supabaseConfigured } from "./services/supabase.js";
 import { generateRouter } from "./routes/generate.js";
 import { projectsRouter } from "./routes/projects.js";
 import { previewRouter } from "./routes/preview.js";
@@ -24,7 +25,11 @@ import { availableImageProviders } from "./providers/images.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const store = new JsonProjectStore();
+// Phase 3: real database when Supabase is configured; JSON files otherwise.
+const store = supabaseConfigured() ? new SupabaseProjectStore() : new JsonProjectStore();
+console.log(supabaseConfigured()
+  ? "  🗄  Storage: Supabase Postgres (cloud database)"
+  : "  🗄  Storage: local JSON files (add Supabase keys for cloud storage — see SETUP-SUPABASE.md)");
 
 app.use(express.json({ limit: "10mb" }));
 app.use(authMiddleware);
@@ -52,7 +57,7 @@ app.use("/media", express.static(MEDIA_DIR));
 
 app.listen(config.port, () => {
   console.log("");
-  console.log("  ✅ Creation Platform v0.3 is running!");
+  console.log("  ✅ Creation Platform v1.9 is running!");
   console.log(`  👉 Open http://localhost:${config.port} in your browser`);
   console.log("");
   for (const p of availableProviders()) {

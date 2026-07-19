@@ -98,6 +98,56 @@ The end-to-end flow now exists in one product: movie plan → 🖼 keyframes →
 
 The platform now runs **online, not just on one PC**: `Dockerfile` (Node + Python + FFmpeg in one image), **password gate** (`ACCESS_PASSWORD` env → login page + 401s; open mode locally), and `DEPLOY-ONLINE.md` (Render.com from the GitHub repo, auto-deploy on push, HTTPS included). One shared team password = right size for "ourselves online"; per-user accounts remain the Phase 3 milestone below.
 
+### Phase 5.3 — Movie styles + Photo Movie ✅ (v1.1, July 2026)
+
+- **Style presets** for all video work: 🎬 Cinematic, 📱 Phone/vlog (vertical 9:16, handheld realism), 🍳 Cooking show, 🚀 Space flight, 🧱 Toy/Lego stop-motion. Styles inject into movie plans and every Veo prompt; aspect ratio follows the style.
+- **📸 Photo Movie**: upload your own photos (toys on a diorama, anything) → the AI writes a continuity-aware shot list (`/api/video/shotlist`) → Veo animates each actual photo → FFmpeg stitches the film. Your real toys become the actors.
+- Next in Phase 5: voiceover + music tracks, per-scene retakes, Runway/Kling adapters.
+
+### Phase 5.4 — IN-HOUSE video engine ✅ (v1.2, July 2026)
+
+**Our own video generation, no external integrations** (`src/services/motion.ts`): FFmpeg-powered motion engine renders movies from keyframes or user photos with rotating cinematic camera moves (zoom in/out, pan left/right — the documentary "Ken Burns" technique), both aspect ratios, stitched in-house. Free, works offline, always available. Veo remains the optional paid "subjects move & act" engine; the UI offers both. Also added `push-github.bat` — double-click to commit+push (GitHub sign-in via Git's own browser popup; no tokens handled by anyone else).
+
+**Path to fully in-house AI motion (recorded for later):** run an open-source video model (LTX-Video / HunyuanVideo / Stable Video Diffusion via ComfyUI) on our own GPU (needs a 16–24GB NVIDIA card, ~$1–2k one-time) and add it as a third engine behind the same interface. That is the true "Veo replacement we own."
+
+### Phase 5.5 — Narration ✅ (v1.3, July 2026)
+
+🎤 **Add narration** on any finished movie: Gemini TTS (same GOOGLE_API_KEY, pennies/minute) speaks your text — pre-filled from the screenplay's voiceover lines — and FFmpeg mixes it into the film in-house (`mixVoiceover` in studio.ts, `src/providers/speech.ts`). ElevenLabs slots in later as a premium voice adapter. Also added **INTEGRATIONS.md** — the master list of every API, account, and software the whole vision needs. Remaining Phase 5: per-scene retakes, local GPU video model.
+
+### Phase 5.6 — Music ✅ (v1.4, July 2026)
+
+🎵 **Add music** on any finished movie: pick any audio file you own (royalty-free track etc.) and the in-house pipeline mixes it under the film — looped to fit, and automatically ducked to 25% volume beneath narration when the movie already has a voice track (`mixMusic` in studio.ts). The film pipeline is now complete: plan → keyframes → motion (in-house or Veo) → narration → music.
+
+### Phase 2.2 — Multi-file React ✅ (v1.6, July 2026)
+
+⚛️ **React App target**: generates professional multi-file Vite + React projects (components split under src/, proper config), streamed live with file tabs like everything else. **Run in browser** now works for React too — the platform npm-installs the project and runs its Vite dev server locally, Lovable-style (first run ~1 min, then fast via npm cache). ZIP download gives a standard project any React developer can work on; `npm run build` produces deployable files for the 🚀 Publish flow (auto-publish of built React apps = next Phase 2 item).
+
+### Phase 2.3 — React publish + art persistence ✅ (v1.7, July 2026)
+
+- 🚀 **Publish now works for React projects**: the platform runs `npm run build` itself (`src/services/build.ts`) and deploys the optimized dist/ to Netlify — full Lovable loop for professional apps: generate → preview → iterate → live URL.
+- 💾 Game art (and any binary assets) now **persists with saved projects** — the v1.5 caveat is closed.
+
+### Phase 4.1 — AI game art ✅ (v1.5, July 2026)
+
+🎨 Godot games now ship with AI-drawn graphics: every generated game includes `assets.json` (sprite list with style-consistent prompts) and loads textures with a safe fallback, so it runs perfectly with primitives alone AND upgrades itself when the art exists. The **Generate game art** button draws every sprite through the image gateway, previews them in a gallery, and packs the PNGs into the ZIP — unzip, open in Godot, the game is skinned. (Art not yet persisted with saved projects; regenerate after loading.)
+
+## Phase 6 — Book Studio 🔨 (started v1.8, July 2026)
+
+**Goal:** full book series from user prompts/assets — a major product line.
+
+### Phase 6.1 — Core book pipeline ✅ (v1.8)
+
+- 📚 **Book target** with four types: 📖 picture books, 🖍 coloring books (line-art enforced), 🌟 choose-your-own-story (branching pages, multiple endings, clickable choices), 🎓 leveled readers (pre-K → university, level obeyed in every page's text). Every book designed as part of a series (bible in style.md, next-volume hook).
+- **🖼 Illustrate book**: every page drawn via the image gateway using verbatim character descriptions for consistency.
+- **📖 View book**: compiled to a beautiful printable book.html (browser Print → Save as PDF = the real book; print CSS included). Saved into the project and the ZIP.
+- **🎥 Animate book**: pages become a video storybook via the in-house motion engine; 🎤 narration pre-fills with the full book text (read-aloud videos), then 🎵 music.
+
+### Phase 6 next: user-supplied assets (their photos/drawings as characters), EPUB export, per-page re-illustration, series manager (shared bible across volumes).
+
+### Phase 3.2 — Real database ✅ (v1.9, July 2026)
+
+🗄 **Supabase Postgres storage** (project ujkizgblscqcejghxemb): the ProjectStore interface went async and gained a second implementation (`src/services/supabase.ts`, PostgREST via fetch — no SDK). With SUPABASE_URL + SUPABASE_SERVICE_KEY in .env the platform stores projects in the cloud database (survives redeploys, shared between PC and Render); without them it falls back to local JSON. Setup: SETUP-SUPABASE.md. Next: Phase 3.3 user accounts (Supabase Auth), then metering, job queue, sandboxing.
+
 ## Phase 3 — Multi-user & "for the world" ⬜ (months 3–6)
 
 **Goal:** other people can use it safely.

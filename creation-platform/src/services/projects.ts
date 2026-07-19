@@ -22,6 +22,8 @@ export interface Project {
   code: string;
   /** Multi-file targets (flutter, python). */
   files: ProjectFile[];
+  /** Generated binary assets (e.g. game art PNGs), base64. */
+  binaries: Array<{ path: string; b64: string }>;
   savedAt: string;
 }
 
@@ -37,10 +39,11 @@ export interface ProjectStore {
     prompt: string,
     code: string,
     target?: string,
-    files?: ProjectFile[]
-  ): Project;
-  list(): ProjectSummary[];
-  get(id: string): Project | null;
+    files?: ProjectFile[],
+    binaries?: Array<{ path: string; b64: string }>
+  ): Promise<Project>;
+  list(): Promise<ProjectSummary[]>;
+  get(id: string): Promise<Project | null>;
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -53,13 +56,14 @@ export class JsonProjectStore implements ProjectStore {
     if (!fs.existsSync(this.dir)) fs.mkdirSync(this.dir, { recursive: true });
   }
 
-  save(
+  async save(
     name: string,
     prompt: string,
     code: string,
     target = "web",
-    files: ProjectFile[] = []
-  ): Project {
+    files: ProjectFile[] = [],
+    binaries: Array<{ path: string; b64: string }> = []
+  ): Promise<Project> {
     const id =
       name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50) +
       "-" +
@@ -71,6 +75,7 @@ export class JsonProjectStore implements ProjectStore {
       target,
       code,
       files,
+      binaries,
       savedAt: new Date().toISOString(),
     };
     fs.writeFileSync(
@@ -80,7 +85,7 @@ export class JsonProjectStore implements ProjectStore {
     return project;
   }
 
-  list(): ProjectSummary[] {
+  async list(): Promise<ProjectSummary[]> {
     return fs
       .readdirSync(this.dir)
       .filter((f) => f.endsWith(".json"))
@@ -93,7 +98,7 @@ export class JsonProjectStore implements ProjectStore {
       .sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1));
   }
 
-  get(id: string): Project | null {
+  async get(id: string): Promise<Project | null> {
     const file = path.join(this.dir, path.basename(id) + ".json");
     if (!fs.existsSync(file)) return null;
     return JSON.parse(fs.readFileSync(file, "utf8")) as Project;

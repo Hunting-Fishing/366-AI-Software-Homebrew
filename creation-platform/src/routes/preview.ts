@@ -9,13 +9,16 @@ import type { ProjectFile } from "../lib/files.js";
 export const previewRouter = Router();
 
 previewRouter.post("/api/preview", async (req: Request, res: Response) => {
-  const { files } = req.body as { files?: ProjectFile[] };
+  const { files, kind } = req.body as { files?: ProjectFile[]; kind?: string };
   if (!files || files.length === 0) {
     res.status(400).json({ error: "files are required" });
     return;
   }
   try {
-    const { url } = await previewRunner.start(files);
+    const { url } =
+      kind === "react"
+        ? await previewRunner.startReact(files)
+        : await previewRunner.start(files);
     res.json({ url });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });

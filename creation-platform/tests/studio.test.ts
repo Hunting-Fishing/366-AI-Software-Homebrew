@@ -13,7 +13,7 @@ test("saveClip sanitizes dangerous names", () => {
   assert.match(file, /^\/media\/[a-zA-Z0-9._-]+$/);
   const onDisk = path.join(MEDIA_DIR, path.basename(file));
   assert.ok(fs.existsSync(onDisk));
-  fs.rmSync(onDisk);
+  try { fs.rmSync(onDisk); } catch { /* some sandboxes forbid deletes — cleanup is best-effort */ }
 });
 
 test("assemble rejects empty input", async (t) => {

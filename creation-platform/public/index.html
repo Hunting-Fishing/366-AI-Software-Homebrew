@@ -64,6 +64,21 @@
   <h1>⚡ Creation Platform</h1>
   <span class="spacer"></span>
   <select id="targetSel" title="What kind of code to generate"></select>
+  <select id="styleSel" title="Visual style for movies" style="display:none">
+    <option value="cinematic">🎬 Cinematic</option>
+    <option value="phone">📱 Phone / vlog (vertical)</option>
+    <option value="cooking">🍳 Cooking show</option>
+    <option value="space">🚀 Space flight</option>
+    <option value="toys">🧱 Toy / Lego stop-motion</option>
+  </select>
+  <button id="photoMovieBtn" style="display:none" title="Turn your own photos into a movie">📸 Photo Movie</button>
+  <select id="bookSel" title="Book type" style="display:none">
+    <option value="picture">📖 Picture book</option>
+    <option value="coloring">🖍 Coloring book</option>
+    <option value="cyoa">🌟 Choose-your-own-story</option>
+    <option value="leveled">🎓 Leveled reader</option>
+  </select>
+  <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
   <select id="providerSel" title="Which AI builds it"></select>
   <select id="projectSel" title="Load a saved project"><option value="">Load project…</option></select>
   <button id="saveBtn" disabled>💾 Save</button>
@@ -116,6 +131,23 @@ let targetsInfo = [];    // from /api/health
 let imageProviders = []; // from /api/health
 let healthInfo = {};     // full /api/health payload
 let lastKeyframes = [];  // [{id, b64, videoPrompt}] after keyframe generation
+
+// Movie style presets: injected into movie-plan prompts and shot lists.
+const MOVIE_STYLES = {
+  cinematic: { aspect: "16:9", text: "Cinematic film look: 16:9, filmic color grade, deliberate camera moves (dolly, crane), shallow depth of field." },
+  phone:     { aspect: "9:16", text: "Shot like real phone footage: VERTICAL 9:16, handheld with natural shake, first-person POV, casual vlog framing, realistic lighting — must feel like someone filming on their phone, not a movie." },
+  cooking:   { aspect: "16:9", text: "TV cooking show: bright kitchen set, overhead and close-up shots of hands and ingredients, steam and sizzle details, host addressing camera between steps, warm appetizing color." },
+  space:     { aspect: "16:9", text: "Spacecraft flight: cockpit POV and exterior tracking shots, starfields, planets and nebulae, thruster glow, weightless drift, epic scale, sci-fi film lighting." },
+  toys:      { aspect: "16:9", text: "Toy stop-motion animation (Lego style): real plastic toys on a physical diorama, slightly jerky stop-motion movement at low frame feel, macro lens depth of field, playful practical-set lighting. The toys visible in the frame come alive; keep every brick and toy exactly as in the source image." },
+};
+function currentStyle() { return MOVIE_STYLES[$("styleSel").value] || MOVIE_STYLES.cinematic; }
+
+const BOOK_TYPES = {
+  picture:  "BOOK TYPE: Picture book — warm read-aloud language, rich colorful illustrations.",
+  coloring: "BOOK TYPE: Coloring book — every illustration must be black-and-white line art coloring pages; page text is a one-line caption.",
+  cyoa:     "BOOK TYPE: Choose-your-own-story — branching pages with choices and multiple endings.",
+  leveled:  "BOOK TYPE: Leveled reader — obey the reading level I state exactly (pre-K through university).",
+};
 let activeFile = 0;
 
 const $ = (id) => document.getElementById(id);
@@ -147,6 +179,7 @@ async function init() {
   const firstOk = health.providers.find(p => p.configured);
   if (firstOk) pSel.value = firstOk.id;
   else addMsg("err", "No API keys found. Add at least one key to the .env file, then restart the server.");
+  syncVideoControls();
   refreshProjects();
 }
 
@@ -196,7 +229,7 @@ function renderProject() {
   $("empty").style.display = "none";
   $("saveBtn").disabled = false;
   $("downloadBtn").disabled = false;
-  $("publishBtn").disabled = !isWeb(project);
+  $("publishBtn").disabled = !(isWeb(project) || project.target === "react");
 
   if (isWeb(project)) {
     $("preview").removeAttribute("src");
@@ -213,16 +246,42 @@ function renderProject() {
     renderFileTabs();
     const info = targetInfo(project.target);
     $("runHint").textContent = "▶ How to run: " + info.runInstructions + " ";
-    if (project.target === "python") {
+    if (project.target === "python" || project.target === "react") {
       const b = document.createElement("button");
       b.textContent = "🌐 Run in browser";
-      b.onclick = runPythonPreview;
+      b.onclick = runLivePreview;
       $("runHint").appendChild(b);
     }
     if (project.target === "video" && imageProviders.some(p => p.configured)) {
       const b = document.createElement("button");
       b.textContent = "🖼 Generate keyframes";
       b.onclick = generateKeyframes;
+      $("runHint").appendChild(b);
+    }
+    if (project.target === "book" && project.files.some(f => f.path === "pages.json")) {
+      if (imageProviders.some(p => p.configured)) {
+        const b = document.createElement("button");
+        b.textContent = "🖼 Illustrate book";
+        b.onclick = illustrateBook;
+        $("runHint").appendChild(b);
+      }
+      if ((project.binaries || []).some(x => x.path.startsWith("pages/"))) {
+        const v = document.createElement("button");
+        v.textContent = "📖 View book";
+        v.onclick = showBook;
+        $("runHint").appendChild(v);
+        if (healthInfo.ffmpeg) {
+          const a = document.createElement("button");
+          a.textContent = "🎥 Animate book";
+          a.onclick = animateBook;
+          $("runHint").appendChild(a);
+        }
+      }
+    }
+    if (project.target === "godot" && imageProviders.some(p => p.configured) && project.files.some(f => f.path === "assets.json")) {
+      const b = document.createElement("button");
+      b.textContent = "🎨 Generate game art";
+      b.onclick = generateGameArt;
       $("runHint").appendChild(b);
     }
     $("runHint").style.display = "block";
@@ -254,7 +313,14 @@ async function send() {
   showTab("code");
 
   try {
-    const body = { provider: $("providerSel").value, prompt: promptText, target: targetId };
+    let finalPrompt = promptText;
+    if (targetId === "video" && !project) {
+      finalPrompt = promptText + "\n\nVISUAL STYLE (use this exactly, in every prompt): " + currentStyle().text;
+    }
+    if (targetId === "book" && !project) {
+      finalPrompt = promptText + "\n\n" + (BOOK_TYPES[$("bookSel").value] || BOOK_TYPES.picture);
+    }
+    const body = { provider: $("providerSel").value, prompt: finalPrompt, target: targetId };
     if (project && isWeb(project)) body.currentCode = project.code;
     if (project && !isWeb(project)) body.currentFiles = project.files;
 
@@ -323,14 +389,16 @@ async function send() {
 function useIdea(text) { $("promptBox").value = text; send(); }
 
 // ---- live Python preview (web-based, no ZIP needed) ----
-async function runPythonPreview() {
+async function runLivePreview() {
   const note = addMsg("bot", "");
-  note.innerHTML = '<span class="spinner"></span>Starting your app on this machine…';
+  note.innerHTML = '<span class="spinner"></span>' + (project.target === "react"
+    ? "Starting your React app — first run installs packages (~1 minute)…"
+    : "Starting your app on this machine…");
   try {
     const res = await fetch("/api/preview", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ files: project.files }),
+      body: JSON.stringify({ files: project.files, kind: project.target }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Preview failed");
@@ -344,6 +412,136 @@ async function runPythonPreview() {
     note.textContent = "⚠️ " + err.message;
     note.className = "msg err";
   }
+}
+
+// ---- 📚 book pipeline: illustrate → compile → animate ----
+function bookPages() {
+  const pf = project.files.find(f => f.path === "pages.json");
+  try { const p = JSON.parse(pf.content); return Array.isArray(p) ? p : null; } catch { return null; }
+}
+
+async function illustrateBook() {
+  const pages = bookPages();
+  if (!pages) { addMsg("err", "pages.json is missing or invalid — ask me to fix it."); return; }
+  const imgProvider = imageProviders.find(p => p.configured);
+  const note = addMsg("bot", "");
+  project.binaries = (project.binaries || []).filter(b => !b.path.startsWith("pages/"));
+  let ok = 0;
+  for (let i = 0; i < pages.length; i++) {
+    note.innerHTML = '<span class="spinner"></span>Illustrating page ' + (i + 1) + "/" + pages.length + "…";
+    try {
+      const res = await fetch("/api/image", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ provider: imgProvider.id, prompt: pages[i].illustration_prompt || "" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "image failed");
+      project.binaries.push({ path: "pages/page-" + (pages[i].page ?? i + 1) + ".png", b64: data.b64 });
+      ok++;
+    } catch (err) {
+      addMsg("err", "⚠️ Page " + (pages[i].page ?? i + 1) + ": " + err.message);
+    }
+  }
+  note.textContent = "🖼 Illustrated " + ok + "/" + pages.length + " pages. ";
+  const v = document.createElement("button");
+  v.textContent = "📖 View book";
+  v.onclick = showBook;
+  note.appendChild(v);
+  showBook();
+}
+
+function buildBookHtml() {
+  const pages = bookPages() || [];
+  const title = (project.files.find(f => f.path === "book.md") || { content: "My Book" }).content.split("\n")[0].replace(/^#+\s*/, "");
+  const img = (n) => {
+    const b = (project.binaries || []).find(x => x.path === "pages/page-" + n + ".png");
+    return b ? '<img src="data:image/png;base64,' + b.b64 + '" alt="illustration">' : "";
+  };
+  const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const body = pages.map((p) => {
+    const choices = (p.choices || []).map(c => '<a class="choice" href="#page-' + c.goto + '">' + esc(c.label) + ' →</a>').join("");
+    return '<section class="page" id="page-' + p.page + '">' + img(p.page) +
+      '<p class="text">' + esc(p.text) + "</p>" +
+      (choices ? '<div class="choices">' + choices + "</div>" : "") +
+      (p.ending ? '<p class="ending">— The End —</p>' : "") +
+      '<p class="num">' + p.page + "</p></section>";
+  }).join("");
+  return "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>" + esc(title) + "</title><style>" +
+    "body{font-family:Georgia,serif;background:#f5f0e8;margin:0;color:#2a2320}" +
+    "h1{text-align:center;padding:40px 20px 10px;font-size:34px}" +
+    ".page{max-width:720px;margin:24px auto;background:#fff;border-radius:12px;box-shadow:0 4px 18px rgba(0,0,0,.12);padding:28px;text-align:center}" +
+    ".page img{max-width:100%;border-radius:8px}" +
+    ".text{font-size:22px;line-height:1.6;margin:18px 8px}" +
+    ".choices{display:flex;flex-direction:column;gap:10px;margin:14px 0}" +
+    ".choice{font-size:18px;color:#1a56db;text-decoration:none;border:2px solid #1a56db;border-radius:10px;padding:10px}" +
+    ".ending{font-style:italic;color:#8a6d3b}" +
+    ".num{color:#b0a695;font-size:13px}" +
+    "@media print{body{background:#fff}.page{box-shadow:none;page-break-after:always;margin:0 auto}h1{page-break-after:always}}" +
+    "</style></head><body><h1>" + esc(title) + "</h1>" + body +
+    "<p style='text-align:center;color:#b0a695;padding:20px'>Print this page (Ctrl+P) and choose “Save as PDF” to make the real book.</p></body></html>";
+}
+
+function showBook() {
+  const html = buildBookHtml();
+  project.files = project.files.filter(f => f.path !== "book.html").concat([{ path: "book.html", content: html }]);
+  const iframe = $("preview");
+  iframe.removeAttribute("src");
+  iframe.setAttribute("sandbox", "allow-scripts");
+  iframe.srcdoc = html;
+  $("empty").style.display = "none";
+  showTab("preview");
+}
+
+function animateBook() {
+  const pages = bookPages() || [];
+  const frames = pages
+    .map(p => ({ id: p.page, b64: ((project.binaries || []).find(x => x.path === "pages/page-" + p.page + ".png") || {}).b64 }))
+    .filter(f => f.b64);
+  if (frames.length === 0) { addMsg("err", "Illustrate the book first."); return; }
+  inhouseMovie(frames);
+  addMsg("bot", "💡 Tip: when the video is ready, use 🎤 Add narration — it can read the whole book aloud — then 🎵 Add music.");
+}
+
+// ---- game art generation for Godot projects ----
+async function generateGameArt() {
+  const af = project.files.find(f => f.path === "assets.json");
+  let assets;
+  try { assets = JSON.parse(af.content); } catch { addMsg("err", "assets.json is not valid JSON — ask me to fix it."); return; }
+  if (!Array.isArray(assets) || assets.length === 0) { addMsg("err", "assets.json lists no sprites."); return; }
+
+  const imgProvider = imageProviders.find(p => p.configured);
+  const note = addMsg("bot", "");
+  project.binaries = project.binaries || [];
+  let ok = 0;
+
+  for (let i = 0; i < assets.length; i++) {
+    note.innerHTML = '<span class="spinner"></span>Drawing sprite ' + (i + 1) + "/" + assets.length + " (" + (assets[i].file || "?") + ")…";
+    try {
+      const res = await fetch("/api/image", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ provider: imgProvider.id, prompt: (assets[i].prompt || "") + " Game sprite on a plain solid background, centered, full subject visible." }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "image failed");
+      const path = String(assets[i].file || ("assets/sprite" + i + ".png"));
+      project.binaries = project.binaries.filter(b => b.path !== path);
+      project.binaries.push({ path, b64: data.b64 });
+      ok++;
+    } catch (err) {
+      addMsg("err", "⚠️ " + (assets[i].file || "sprite " + (i + 1)) + ": " + err.message);
+    }
+  }
+
+  note.textContent = "🎨 Game art done: " + ok + "/" + assets.length + " sprites drawn. They're INCLUDED in the ZIP download — unzip and the game uses them automatically. (Art isn't saved with 💾 projects yet — regenerate after loading.)";
+  const cells = project.binaries.map(b => '<figure><img src="data:image/png;base64,' + b.b64 + '"><figcaption>' + b.path + '</figcaption></figure>').join("");
+  const iframe = $("preview");
+  iframe.removeAttribute("src");
+  iframe.setAttribute("sandbox", "allow-scripts");
+  iframe.srcdoc = "<!DOCTYPE html><html><head><style>body{font-family:sans-serif;background:#111;color:#eee;margin:16px}div.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}figure{margin:0;background:#1c1c22;border-radius:10px;padding:10px}img{width:100%;border-radius:6px;image-rendering:pixelated}figcaption{margin-top:6px;font-size:12px;color:#aaa}</style></head><body><h2>🎨 Game art</h2><div class='grid'>" + cells + "</div></body></html>";
+  $("empty").style.display = "none";
+  showTab("preview");
 }
 
 // ---- keyframe generation for video projects ----
@@ -378,13 +576,19 @@ async function generateKeyframes() {
   const ok = images.filter(im => im.b64).length;
   note.textContent = "🖼 Keyframes done: " + ok + "/" + scenes.length + " generated (Preview tab; right-click to save). ";
   const veoReady = (healthInfo.videoProviders || []).some(p => p.configured);
-  if (ok > 0 && veoReady && healthInfo.ffmpeg) {
-    const b = document.createElement("button");
-    b.textContent = "🎞 Animate & assemble movie";
-    b.onclick = () => animateAndAssemble(note);
-    note.appendChild(b);
+  if (ok > 0 && healthInfo.ffmpeg) {
+    const b2 = document.createElement("button");
+    b2.textContent = "🎥 Make movie in-house (free)";
+    b2.onclick = () => inhouseMovie(lastKeyframes, note);
+    note.appendChild(b2);
+    if (veoReady) {
+      const b = document.createElement("button");
+      b.textContent = "🎞 Animate with Veo AI (paid)";
+      b.onclick = () => animateAndAssemble(note);
+      note.appendChild(b);
+    }
   } else if (ok > 0) {
-    note.textContent += veoReady ? "Install FFmpeg to enable auto-assembly (winget install ffmpeg)." : "Animate them with Veo/Runway/Kling per production-guide.md.";
+    note.textContent += "Install FFmpeg to make movies (winget install ffmpeg), or animate manually per production-guide.md.";
   }
 
   const cells = images.map(im => im.b64
@@ -400,6 +604,103 @@ async function generateKeyframes() {
   showTab("preview");
 }
 
+// ---- shared movie player ----
+function playMovie(file, note, label) {
+  note.textContent = label + " Playing in the Preview tab. Saved at " + file + " ";
+  const googleReady = (healthInfo.providers || []).some(p => p.id === "google" && p.configured);
+  if (googleReady && healthInfo.ffmpeg) {
+    const b = document.createElement("button");
+    b.textContent = "🎤 Add narration";
+    b.onclick = async () => {
+      let defaultText = "";
+      if (project && project.target === "video") {
+        const sf = project.files.find(f => f.path === "scenes.json");
+        if (sf) { try { defaultText = JSON.parse(sf.content).map(s => s.voiceover).filter(Boolean).join(" "); } catch {} }
+      }
+      if (project && project.target === "book") {
+        const pages = bookPages() || [];
+        defaultText = pages.map(p => p.text).filter(Boolean).join(" ");
+      }
+      const text = prompt("Narration text (spoken over the whole movie):", defaultText);
+      if (!text) return;
+      const n2 = addMsg("bot", "");
+      n2.innerHTML = '<span class="spinner"></span>Recording narration and mixing it in…';
+      try {
+        const res = await fetch("/api/video/voiceover", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ file, text }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "narration failed");
+        playMovie(data.file, n2, "🎤 Narrated movie ready!");
+      } catch (err) {
+        n2.textContent = "⚠️ " + err.message; n2.className = "msg err";
+      }
+    };
+    note.appendChild(b);
+  }
+  if (healthInfo.ffmpeg) {
+    const m = document.createElement("button");
+    m.textContent = "🎵 Add music";
+    m.onclick = () => {
+      const inp = document.createElement("input");
+      inp.type = "file";
+      inp.accept = "audio/*";
+      inp.onchange = async () => {
+        const f = inp.files[0];
+        if (!f) return;
+        const b64 = await new Promise((resolve) => {
+          const r = new FileReader();
+          r.onload = () => resolve(String(r.result).split(",")[1]);
+          r.readAsDataURL(f);
+        });
+        const n3 = addMsg("bot", "");
+        n3.innerHTML = '<span class="spinner"></span>Mixing “' + f.name + '” under your movie…';
+        try {
+          const res = await fetch("/api/video/music", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ file, musicB64: b64, ext: (f.name.split(".").pop() || "mp3") }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "music mix failed");
+          playMovie(data.file, n3, "🎵 Scored movie ready!");
+        } catch (err) {
+          n3.textContent = "⚠️ " + err.message; n3.className = "msg err";
+        }
+      };
+      inp.click();
+    };
+    note.appendChild(m);
+  }
+  const iframe = $("preview");
+  iframe.removeAttribute("src");
+  iframe.setAttribute("sandbox", "allow-scripts");
+  iframe.srcdoc = "<!DOCTYPE html><body style='margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh'><video src='" + file + "' controls autoplay style='max-width:100%;max-height:100%'></video></body>";
+  $("empty").style.display = "none";
+  showTab("preview");
+}
+
+// ---- IN-HOUSE movie: our own FFmpeg motion engine, free ----
+async function inhouseMovie(frames, prevNote) {
+  const note = addMsg("bot", "");
+  note.innerHTML = '<span class="spinner"></span>Making your movie with our in-house engine (free, ~30 seconds)…';
+  try {
+    const res = await fetch("/api/video/motion", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ images: frames.map(f => ({ id: f.id, b64: f.b64 })), aspect: currentStyle().aspect }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "in-house render failed");
+    playMovie(data.file, note, "🎥 Your movie is ready (made 100% by our own software)!");
+  } catch (err) {
+    note.textContent = "⚠️ " + err.message;
+    note.className = "msg err";
+  }
+}
+
 // ---- animate keyframes with Veo, then stitch with FFmpeg ----
 async function animateAndAssemble(prevNote) {
   if (!confirm("Animate " + lastKeyframes.length + " scenes with Veo? Video generation costs real money (roughly $1-3 per scene) and takes a few minutes.")) return;
@@ -412,7 +713,7 @@ async function animateAndAssemble(prevNote) {
       const res = await fetch("/api/video/animate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ scene: kf.id, prompt: kf.videoPrompt, imageB64: kf.b64 }),
+        body: JSON.stringify({ scene: kf.id, prompt: kf.videoPrompt, imageB64: kf.b64, aspect: currentStyle().aspect }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "animate failed");
@@ -444,6 +745,97 @@ async function animateAndAssemble(prevNote) {
   }
 }
 
+// ---- 📸 Photo Movie: user photos → shot list → clips → film ----
+$("photoMovieBtn").onclick = () => {
+  if (!healthInfo.ffmpeg) { addMsg("err", "Photo Movie needs FFmpeg. Install it (winget install ffmpeg) and restart."); return; }
+  $("photoInput").value = "";
+  $("photoInput").click();
+};
+
+$("photoInput").onchange = async (e) => {
+  const files = [...e.target.files];
+  if (files.length === 0) return;
+
+  const photos = [];
+  for (const f of files) {
+    const b64 = await new Promise((resolve) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(",")[1]);
+      r.readAsDataURL(f);
+    });
+    photos.push({ name: f.name, b64 });
+  }
+
+  const style = currentStyle();
+  const veoReady = (healthInfo.videoProviders || []).some(p => p.configured);
+  const useVeo = veoReady && confirm("Choose motion engine:\n\nOK = Veo AI motion (subjects move & act — costs ~$1-3 per photo)\nCancel = Our in-house engine (cinematic pans & zooms — FREE)");
+  if (!useVeo) {
+    const kf = photos.map((p, i) => ({ id: "photo" + (i + 1), b64: p.b64 }));
+    inhouseMovie(kf);
+    return;
+  }
+
+  const description = prompt("You picked " + files.length + " photo(s). What should happen in your movie?\n(e.g. 'my Lego pirate ship sets sail, battles a dragon, and wins')");
+  if (!description) return;
+  const note = addMsg("bot", "");
+  note.innerHTML = '<span class="spinner"></span>Directing your movie — writing a shot list for ' + photos.length + " photo(s)…";
+  let shots;
+  try {
+    const res = await fetch("/api/video/shotlist", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: $("providerSel").value, description, style: style.text, count: photos.length }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "shot list failed");
+    shots = data.shots;
+  } catch (err) {
+    note.textContent = "⚠️ " + err.message; note.className = "msg err"; return;
+  }
+
+  note.textContent = "🎬 Shot list ready:\n" + shots.map((s, i) => (i + 1) + ". " + s.title).join("\n");
+  if (!confirm("Animate " + photos.length + " photo(s) with Veo? Costs roughly $1-3 per photo and takes a few minutes.")) return;
+
+  const work = addMsg("bot", "");
+  const clips = [];
+  for (let i = 0; i < photos.length; i++) {
+    work.innerHTML = '<span class="spinner"></span>Bringing photo ' + (i + 1) + "/" + photos.length + " to life… (1–3 min each)";
+    try {
+      const res = await fetch("/api/video/animate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ scene: "photo" + (i + 1), prompt: shots[i].prompt + " Style: " + style.text, imageB64: photos[i].b64, aspect: style.aspect }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "animate failed");
+      clips.push(data.file);
+    } catch (err) {
+      addMsg("err", "⚠️ Photo " + (i + 1) + ": " + err.message);
+    }
+  }
+  if (clips.length === 0) { work.textContent = "⚠️ No photos could be animated."; work.className = "msg err"; return; }
+
+  work.innerHTML = '<span class="spinner"></span>Stitching your movie…';
+  try {
+    const res = await fetch("/api/video/assemble", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ files: clips }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "assembly failed");
+    work.textContent = "🎬 Your photo movie is ready — playing in the Preview tab! Saved at " + data.file;
+    const iframe = $("preview");
+    iframe.removeAttribute("src");
+    iframe.setAttribute("sandbox", "allow-scripts");
+    iframe.srcdoc = "<!DOCTYPE html><body style='margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh'><video src='" + data.file + "' controls autoplay style='max-width:100%;max-height:100%'></video></body>";
+    $("empty").style.display = "none";
+    showTab("preview");
+  } catch (err) {
+    work.textContent = "⚠️ " + err.message; work.className = "msg err";
+  }
+};
+
 function stopPreview() {
   fetch("/api/preview", { method: "DELETE" }).catch(() => {});
   const iframe = $("preview");
@@ -460,8 +852,16 @@ $("previewTab").onclick = () => { if (project && isWeb(project)) showTab("previe
 $("codeTab").onclick = () => { if (project) showTab("code"); };
 
 // New project when target changes (a Flutter app can't continue a web chat).
+function syncVideoControls() {
+  const isVideo = $("targetSel").value === "video";
+  $("styleSel").style.display = isVideo ? "" : "none";
+  $("photoMovieBtn").style.display = isVideo ? "" : "none";
+  $("bookSel").style.display = $("targetSel").value === "book" ? "" : "none";
+}
+
 $("targetSel").onchange = () => {
   stopPreview();
+  syncVideoControls();
   if (project) {
     project = null;
     $("saveBtn").disabled = true;
@@ -483,6 +883,7 @@ $("downloadBtn").onclick = async () => {
   } else {
     const zip = new JSZip();
     for (const f of project.files) zip.file(f.path, f.content);
+    for (const b of project.binaries || []) zip.file(b.path, b.b64, { base64: true });
     const blob = await zip.generateAsync({ type: "blob" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -492,17 +893,20 @@ $("downloadBtn").onclick = async () => {
 };
 
 $("publishBtn").onclick = async () => {
-  if (!project || !isWeb(project)) return;
+  if (!project || !(isWeb(project) || project.target === "react")) return;
+  const isReact = project.target === "react";
   const name = prompt("Site name (becomes part of the web address):", firstPrompt.slice(0, 30));
   if (!name) return;
   if (!confirm("Publish this app to the PUBLIC web? Anyone with the link can see it.")) return;
   const note = addMsg("bot", "");
-  note.innerHTML = '<span class="spinner"></span>Publishing to the web…';
+  note.innerHTML = '<span class="spinner"></span>' + (isReact ? "Building your React app and publishing (~1–2 minutes)…" : "Publishing to the web…");
   try {
     const res = await fetch("/api/publish", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, code: project.code }),
+      body: JSON.stringify(isReact
+        ? { name, files: project.files, kind: "react" }
+        : { name, code: project.code }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Publish failed");
@@ -525,7 +929,7 @@ $("saveBtn").onclick = async () => {
   await fetch("/api/projects", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name, prompt: firstPrompt, target: project.target, code: project.code, files: project.files }),
+    body: JSON.stringify({ name, prompt: firstPrompt, target: project.target, code: project.code, files: project.files, binaries: project.binaries || [] }),
   });
   refreshProjects();
   addMsg("bot", "💾 Saved as “" + name + "”.");
@@ -535,7 +939,7 @@ $("projectSel").onchange = async (e) => {
   if (!e.target.value) return;
   const p = await fetch("/api/projects/" + e.target.value).then(r => r.json());
   firstPrompt = p.prompt || p.name;
-  project = { target: p.target || "web", code: p.code || "", files: p.files || [] };
+  project = { target: p.target || "web", code: p.code || "", files: p.files || [], binaries: p.binaries || [] };
   activeFile = 0;
   $("targetSel").value = project.target;
   renderProject();

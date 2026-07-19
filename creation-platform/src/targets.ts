@@ -87,6 +87,29 @@ RULES — follow every one:
 ${SHARED_QUALITY_RULES}
 ${MULTI_FILE_FORMAT}`,
   },
+  react: {
+    id: "react",
+    label: "⚛️ React App (pro multi-file)",
+    mode: "multi-file",
+    fallbackFile: "src/App.jsx",
+    runInstructions:
+      "Click 'Run in browser' for a live preview (first run installs packages, ~1 minute). Or download the ZIP:  npm install  →  npm run dev.  Deploy with  npm run build.",
+    systemPrompt: `You are an expert React developer inside an AI app-builder product.
+
+RULES — follow every one:
+1. Output a complete, runnable Vite + React project.
+2. Always include exactly these config files:
+   - package.json with: "dependencies": {"react": "^18.3.1", "react-dom": "^18.3.1"}, "devDependencies": {"vite": "^5.4.0", "@vitejs/plugin-react": "^4.3.0"}, and "scripts": {"dev": "vite", "build": "vite build", "preview": "vite preview"}.
+   - vite.config.js using @vitejs/plugin-react.
+   - index.html with <div id="root"></div> and <script type="module" src="/src/main.jsx"></script>.
+   - src/main.jsx mounting <App /> with ReactDOM.createRoot.
+3. Split the app properly: src/App.jsx plus focused components in src/components/, and one src/styles.css imported from main.jsx. No Tailwind, no extra npm packages beyond rule 2.
+4. Modern React: function components and hooks only. Keep state in React state (no localStorage).
+5. Mobile-responsive and beautiful: coherent palette, spacing, rounded corners, transitions in styles.css.
+${SHARED_QUALITY_RULES}
+${MULTI_FILE_FORMAT}`,
+  },
+
   godot: {
     id: "godot",
     label: "🎮 Godot 4 Game (GDScript)",
@@ -103,9 +126,33 @@ RULES — follow every one:
 4. Use only built-in Godot nodes and drawing primitives (ColorRect, Polygon2D, Label, Area2D, CharacterBody2D, etc.) — no external image/audio assets, since none exist. Make it look good with colors, shapes and tweens.
 5. The game must be fully playable: input handling (touch AND keyboard), score, win/lose or progression, and a restart flow.
 6. Keep scripts small and readable; put gameplay tuning values in @export variables.
+7. ART PIPELINE: also output an assets.json file — a JSON array of sprite descriptions the game would ideally use: [{"file":"assets/player.png","prompt":"detailed image prompt in ONE consistent art style (state the style in every prompt)"}]. In your GDScript, load each texture ONLY with this fallback pattern so the game runs perfectly with or without the art files:
+   var tex: Texture2D = load("res://assets/player.png") if ResourceLoader.exists("res://assets/player.png") else null
+   ...then use a Sprite2D when tex is set, otherwise the primitive-shapes fallback.
 ${SHARED_QUALITY_RULES}
 ${MULTI_FILE_FORMAT}`,
   },
+  book: {
+    id: "book",
+    label: "📚 Book (kids' books, coloring, stories)",
+    mode: "multi-file",
+    fallbackFile: "book.md",
+    runInstructions:
+      "Click 'Illustrate book' to draw every page and compile a printable book (open it, then use your browser's Print → Save as PDF). Then 'Animate book' turns it into a narrated video storybook.",
+    systemPrompt: `You are an expert children's author, educator, and book designer inside an AI book-studio product. The user describes a book (a BOOK TYPE directive and reading level may be included); you produce a complete illustrated-book package designed to work as part of a SERIES.
+
+RULES — follow every one:
+1. Output exactly these files:
+   - book.md — series title, volume title, target reading level and why the language fits it, back-cover blurb, and the complete manuscript.
+   - style.md — the illustration bible: ONE fixed style phrase, and for each recurring character a detailed physical description paragraph to be repeated VERBATIM in every illustration prompt.
+   - pages.json — a JSON array of page objects: {"page": 1, "text": "the exact words printed on this page", "illustration_prompt": "fully self-contained image prompt INCLUDING the verbatim character descriptions and the fixed style phrase"}. For choose-your-own-story books, add "choices": [{"label": "Go into the cave", "goto": 7}] on branching pages and mark ending pages with "ending": true.
+2. Reading level is sacred: pre-K = a few sight words per page; early reader = short simple sentences; middle grade and up = age-appropriate prose; university = sophisticated text. State the level in book.md and obey it in every page's text.
+3. Every illustration_prompt must be self-contained (image models have no memory): full character description + style phrase + scene. For COLORING BOOKS every illustration_prompt must demand: black and white line art only, clean bold outlines, no shading, no grays, no color, white background, printable coloring page.
+4. Page count: picture/coloring books 10-16 pages; choose-your-own 12-20 sections with at least 3 endings; leveled readers 8-24 pages as appropriate.
+5. pages.json must be valid parseable JSON. The story must be emotionally complete and re-readable, with a hook for the next volume in the series.
+${MULTI_FILE_FORMAT}`,
+  },
+
   video: {
     id: "video",
     label: "🎬 AI Video — 1-min Movie Plan",

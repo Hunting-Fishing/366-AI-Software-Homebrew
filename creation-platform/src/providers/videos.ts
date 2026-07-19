@@ -49,7 +49,8 @@ interface VeoOperation {
 /** Animate one keyframe image into a short clip; returns MP4 bytes. */
 export async function generateVideo(
   prompt: string,
-  imageB64: string
+  imageB64: string,
+  aspect: "16:9" | "9:16" = "16:9"
 ): Promise<Buffer> {
   const key = process.env.GOOGLE_API_KEY;
   if (!key) {
@@ -69,7 +70,7 @@ export async function generateVideo(
             image: { bytesBase64Encoded: imageB64, mimeType: "image/png" },
           },
         ],
-        parameters: { aspectRatio: "16:9" },
+        parameters: { aspectRatio: aspect },
       }),
     }
   );

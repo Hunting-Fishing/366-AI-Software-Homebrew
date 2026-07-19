@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extractHtml } from "../src/lib/extract.js";
+import { extractHtml, extractJsonArray } from "../src/lib/extract.js";
 
 const DOC = "<!DOCTYPE html><html><body>hi</body></html>";
 
@@ -19,4 +19,18 @@ test("drops chatter before the doctype", () => {
 
 test("trims surrounding whitespace", () => {
   assert.equal(extractHtml("\n\n  " + DOC + "  \n"), DOC);
+});
+
+test("extractJsonArray parses a clean array", () => {
+  const out = extractJsonArray('[{"title":"a","prompt":"b"}]');
+  assert.equal(out.length, 1);
+});
+
+test("extractJsonArray survives fences and chatter", () => {
+  const out = extractJsonArray('Here you go:\n```json\n[{"title":"x"},{"title":"y"}]\n```\nEnjoy!');
+  assert.equal(out.length, 2);
+});
+
+test("extractJsonArray rejects replies with no array", () => {
+  assert.throws(() => extractJsonArray("sorry, no can do"), /No JSON array/);
 });

@@ -112,6 +112,56 @@ export class PreviewRunner {
     return { url: `http://127.0.0.1:${port}/` };
   }
 
+  /** Live preview for React (Vite) projects: npm install, then
+      run the dev server. First run takes ~1 minute (installing). */
+  async startReact(files: ProjectFile[]): Promise<{ url: string }> {
+    this.stop();
+    if (!files.some((f) => f.path === "package.json")) {
+      throw new Error("This project has no package.json to run.");
+    }
+    const port = 5600 + Math.floor(Math.random() * 300);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cp-react-"));
+    for (const f of files) {
+      const p = path.join(dir, f.path);
+      fs.mkdirSync(path.dirname(p), { recursive: true });
+      fs.writeFileSync(p, f.content);
+    }
+
+    const isWin = process.platform === "win32";
+    const npm = isWin ? "npm.cmd" : "npm";
+    const npx = isWin ? "npx.cmd" : "npx";
+
+    // 1. Install dependencies (uses the machine's npm cache, so
+    //    repeat runs are much faster).
+    await new Promise<void>((resolve, reject) => {
+      const p = spawn(npm, ["install", "--no-audit", "--no-fund"], { cwd: dir });
+      let err = "";
+      p.stderr?.on("data", (d: Buffer) => (err += d.toString()));
+      p.on("close", (code) =>
+        code === 0 ? resolve() : reject(new Error("npm install failed:\n" + err.slice(-800)))
+      );
+      p.on("error", () => reject(new Error("npm not found — install Node.js from nodejs.org.")));
+    });
+
+    // 2. Start the Vite dev server.
+    let errOutput = "";
+    const child = spawn(npx, ["vite", "--port", String(port), "--strictPort", "--host", "127.0.0.1"], {
+      cwd: dir,
+    });
+    child.stderr?.on("data", (d: Buffer) => (errOutput += d.toString()));
+    child.stdout?.on("data", (d: Buffer) => (errOutput += d.toString()));
+    this.child = child;
+    this.dir = dir;
+
+    const up = await waitForPort(port, 60, 500);
+    if (!up) {
+      const detail = errOutput.slice(-1200);
+      this.stop();
+      throw new Error("The React dev server failed to start.\n" + detail);
+    }
+    return { url: `http://127.0.0.1:${port}/` };
+  }
+
   stop(): void {
     if (this.child && !this.child.killed) {
       try {

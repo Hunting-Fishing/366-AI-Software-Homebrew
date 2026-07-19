@@ -6,29 +6,38 @@ import type { ProjectStore } from "../services/projects.js";
 export function projectsRouter(store: ProjectStore): Router {
   const router = Router();
 
-  router.post("/api/projects", (req: Request, res: Response) => {
-    const { name, code, prompt, target, files } = req.body as {
+  router.post("/api/projects", async (req: Request, res: Response) => {
+    const { name, code, prompt, target, files, binaries } = req.body as {
       name?: string;
       code?: string;
       prompt?: string;
       target?: string;
       files?: Array<{ path: string; content: string }>;
+      binaries?: Array<{ path: string; b64: string }>;
     };
     const hasContent = Boolean(code) || (files && files.length > 0);
     if (!name || !hasContent) {
       res.status(400).json({ error: "name and code (or files) are required" });
       return;
     }
-    const project = store.save(name, prompt ?? "", code ?? "", target, files);
-    res.json({ id: project.id });
+    try {
+      const project = await store.save(name, prompt ?? "", code ?? "", target, files, binaries);
+      res.json({ id: project.id });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
   });
 
-  router.get("/api/projects", (_req: Request, res: Response) => {
-    res.json(store.list());
+  router.get("/api/projects", async (_req: Request, res: Response) => {
+    try {
+      res.json(await store.list());
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
   });
 
-  router.get("/api/projects/:id", (req: Request, res: Response) => {
-    const project = store.get(req.params.id ?? "");
+  router.get("/api/projects/:id", async (req: Request, res: Response) => {
+    const project = await store.get(req.params.id ?? "");
     if (!project) {
       res.status(404).json({ error: "not found" });
       return;
