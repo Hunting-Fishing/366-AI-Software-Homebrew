@@ -40,10 +40,12 @@ export interface ProjectStore {
     code: string,
     target?: string,
     files?: ProjectFile[],
-    binaries?: Array<{ path: string; b64: string }>
+    binaries?: Array<{ path: string; b64: string }>,
+    /** Owner account id (accounts mode, Phase 3.3). Undefined = local single-user mode. */
+    userId?: string
   ): Promise<Project>;
-  list(): Promise<ProjectSummary[]>;
-  get(id: string): Promise<Project | null>;
+  list(userId?: string): Promise<ProjectSummary[]>;
+  get(id: string, userId?: string): Promise<Project | null>;
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -62,7 +64,8 @@ export class JsonProjectStore implements ProjectStore {
     code: string,
     target = "web",
     files: ProjectFile[] = [],
-    binaries: Array<{ path: string; b64: string }> = []
+    binaries: Array<{ path: string; b64: string }> = [],
+    _userId?: string // local JSON mode is single-user; ignored
   ): Promise<Project> {
     const id =
       name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50) +
@@ -85,7 +88,7 @@ export class JsonProjectStore implements ProjectStore {
     return project;
   }
 
-  async list(): Promise<ProjectSummary[]> {
+  async list(_userId?: string): Promise<ProjectSummary[]> {
     return fs
       .readdirSync(this.dir)
       .filter((f) => f.endsWith(".json"))
@@ -98,7 +101,7 @@ export class JsonProjectStore implements ProjectStore {
       .sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1));
   }
 
-  async get(id: string): Promise<Project | null> {
+  async get(id: string, _userId?: string): Promise<Project | null> {
     const file = path.join(this.dir, path.basename(id) + ".json");
     if (!fs.existsSync(file)) return null;
     return JSON.parse(fs.readFileSync(file, "utf8")) as Project;

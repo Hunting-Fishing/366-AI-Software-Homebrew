@@ -21,6 +21,8 @@ import { videoRouter } from "./routes/video.js";
 import { availableVideoProviders } from "./providers/videos.js";
 import { ffmpegAvailable, MEDIA_DIR } from "./services/studio.js";
 import { authMiddleware, loginHandler } from "./middleware/auth.js";
+import { authRouter } from "./routes/auth.js";
+import { accountsEnabled } from "./services/auth.js";
 import { availableImageProviders } from "./providers/images.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,10 +32,14 @@ const store = supabaseConfigured() ? new SupabaseProjectStore() : new JsonProjec
 console.log(supabaseConfigured()
   ? "  🗄  Storage: Supabase Postgres (cloud database)"
   : "  🗄  Storage: local JSON files (add Supabase keys for cloud storage — see SETUP-SUPABASE.md)");
+console.log(accountsEnabled()
+  ? "  👤 Accounts: ON — per-user sign-in via Supabase Auth"
+  : "  👤 Accounts: off (add SUPABASE_ANON_KEY to enable — see SETUP-SUPABASE.md)");
 
 app.use(express.json({ limit: "10mb" }));
 app.use(authMiddleware);
 app.post("/api/login", loginHandler);
+app.use(authRouter());
 app.use(express.static(path.join(__dirname, "..", "public")));
 
 app.get("/api/health", (_req, res) => {
@@ -57,7 +63,7 @@ app.use("/media", express.static(MEDIA_DIR));
 
 app.listen(config.port, () => {
   console.log("");
-  console.log("  ✅ Creation Platform v1.9 is running!");
+  console.log("  ✅ Creation Platform v2.0 is running!");
   console.log(`  👉 Open http://localhost:${config.port} in your browser`);
   console.log("");
   for (const p of availableProviders()) {

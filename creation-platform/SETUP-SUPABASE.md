@@ -48,6 +48,21 @@ Restart the server (`Ctrl+C`, then `npm start`). You should see:
 
 Save a project in the platform, then check Supabase → **Table Editor** → projects — your project appears as a database row. Your work now survives redeploys, and the same database serves the platform whether it runs on your PC or on Render (add the same two env vars in Render's dashboard).
 
+## Step 5 — Turn on user accounts (Phase 3.3)
+
+Add one more line to `.env` (this key is *publishable* — safe to expose, unlike the service key):
+
+```
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqa2l6Z2Jsc2NxY2VqZ2h4ZW1iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0MTIzMTYsImV4cCI6MjA5OTk4ODMxNn0.7wRBqgT0w-nEaxDVXjkYIlE0PFetqRiTv4YzwkPEaQM
+```
+
+Restart. You'll see `👤 Accounts: ON`, and the platform now shows a **Sign in / Create account** page instead of the team password. Each person gets their own account and sees only their own projects. `ACCESS_PASSWORD` is ignored while accounts are on — you can delete it from .env.
+
+Notes:
+- **Email confirmation is ON** for this Supabase project: new signups get a "confirm your email" message and must click the link before signing in. To let people in instantly instead, turn it off in the dashboard: **Authentication → Sign In / Providers → Email → Confirm email → off**.
+- Database side is already set up (done in Phase 3.3): `user_id` column on projects, a `profiles` table auto-filled on signup, and owner-only row security policies.
+- Projects saved before accounts existed have no owner; they stay visible only when running without accounts (remove SUPABASE_ANON_KEY temporarily to see them, or assign them an owner with one SQL update).
+
 ## Troubleshooting
 
 - **"relation projects does not exist"** → Step 1 SQL wasn't run.

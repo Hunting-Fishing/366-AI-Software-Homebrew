@@ -84,6 +84,8 @@
   <button id="saveBtn" disabled>💾 Save</button>
   <button id="downloadBtn" disabled>⬇ Download</button>
   <button id="publishBtn" disabled title="Put this app on the public web (needs NETLIFY_TOKEN in .env)">🚀 Publish</button>
+  <span id="userChip" style="display:none;font-size:12px;color:#9aa3b8;margin-left:4px"></span>
+  <button id="logoutBtn" style="display:none" title="Sign out of your account">Sign out</button>
 </header>
 
 <main>
@@ -181,6 +183,20 @@ async function init() {
   else addMsg("err", "No API keys found. Add at least one key to the .env file, then restart the server.");
   syncVideoControls();
   refreshProjects();
+
+  // Accounts (Phase 3.3): show who is signed in + a sign-out button.
+  try {
+    const me = await fetch("/api/auth/me").then(r => r.json());
+    if (me.accountsEnabled && me.user) {
+      $("userChip").textContent = "👤 " + (me.user.displayName || me.user.email);
+      $("userChip").style.display = "inline";
+      $("logoutBtn").style.display = "inline-block";
+      $("logoutBtn").onclick = async () => {
+        await fetch("/api/auth/logout", { method: "POST" });
+        location.reload();
+      };
+    }
+  } catch { /* accounts endpoint unavailable — older server, ignore */ }
 }
 
 async function refreshProjects() {

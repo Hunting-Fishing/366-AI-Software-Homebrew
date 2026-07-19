@@ -148,6 +148,10 @@ The platform now runs **online, not just on one PC**: `Dockerfile` (Node + Pytho
 
 🗄 **Supabase Postgres storage** (project ujkizgblscqcejghxemb): the ProjectStore interface went async and gained a second implementation (`src/services/supabase.ts`, PostgREST via fetch — no SDK). With SUPABASE_URL + SUPABASE_SERVICE_KEY in .env the platform stores projects in the cloud database (survives redeploys, shared between PC and Render); without them it falls back to local JSON. Setup: SETUP-SUPABASE.md. Next: Phase 3.3 user accounts (Supabase Auth), then metering, job queue, sandboxing.
 
+### Phase 3.3 — User accounts ✅ (v2.0, July 2026)
+
+👤 **Real per-user accounts** (Supabase Auth via GoTrue REST — no SDK, same house style as the storage layer). With `SUPABASE_ANON_KEY` in .env the platform gates everything behind a **Sign in / Create account** page: email+password signup (display name included), HttpOnly session cookies, silent token refresh, sign-out button in the header. Each user sees **only their own projects** — enforced in the store queries (`user_id` filter) *and* by Postgres RLS policies. Database: `user_id` on projects, `profiles` table auto-created by trigger on signup, owner-only policies (migration `phase_3_3_user_accounts`, applied). The Phase 3.1 password gate and open local mode both still work unchanged when accounts are off — three modes, checked in order: accounts → team password → open. Setup: SETUP-SUPABASE.md Step 5. Next in Phase 3: usage metering + limits, job queue, sandboxing.
+
 ## Phase 3 — Multi-user & "for the world" ⬜ (months 3–6)
 
 **Goal:** other people can use it safely.

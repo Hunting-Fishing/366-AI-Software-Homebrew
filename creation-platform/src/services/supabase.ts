@@ -23,6 +23,8 @@ interface Row {
   files: ProjectFile[];
   binaries: Array<{ path: string; b64: string }>;
   saved_at: string;
+  /** Owner account (accounts mode); null for rows saved before Phase 3.3. */
+  user_id?: string | null;
 }
 
 export class SupabaseProjectStore implements ProjectStore {
@@ -59,13 +61,15 @@ export class SupabaseProjectStore implements ProjectStore {
     code: string,
     target = "web",
     files: ProjectFile[] = [],
-    binaries: Array<{ path: string; b64: string }> = []
+    binaries: Array<{ path: string; b64: string }> = [],
+    userId?: string
   ): Promise<Project> {
     const id =
       name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 50) + "-" + Date.now();
     const row: Row = {
       id, name, prompt, target, code, files, binaries,
       saved_at: new Date().toISOString(),
+      user_id: userId ?? null,
     };
     const res = await fetch(this.base, {
       method: "POST",
@@ -76,18 +80,29 @@ export class SupabaseProjectStore implements ProjectStore {
     return { id, name, prompt, target, code, files, binaries, savedAt: row.saved_at };
   }
 
-  async list(): Promise<ProjectSummary[]> {
-    const res = await fetch(this.base + "?select=id,name,saved_at&order=saved_at.desc", {
-      headers: this.headers(),
-    });
+  // The server talks to Supabase with the service key (bypasses RLS),
+  // so ownership is enforced here in the queries: each user sees only
+  // their own rows. Undefined userId = single-user mode; it sees the
+  // pre-accounts rows (user_id null).
+  private ownerFilter(userId?: string): string {
+    return userId
+      ? "&user_id=eq." + encodeURIComponent(userId)
+      : "&user_id=is.null";
+  }
+
+  async list(userId?: string): Promise<ProjectSummary[]> {
+    const res = await fetch(
+      this.base + "?select=id,name,saved_at&order=saved_at.desc" + this.ownerFilter(userId),
+      { headers: this.headers() }
+    );
     if (!res.ok) await this.fail("list", res);
     const rows = (await res.json()) as Array<Pick<Row, "id" | "name" | "saved_at">>;
     return rows.map((r) => ({ id: r.id, name: r.name, savedAt: r.saved_at }));
   }
 
-  async get(id: string): Promise<Project | null> {
+  async get(id: string, userId?: string): Promise<Project | null> {
     const res = await fetch(
-      this.base + "?id=eq." + encodeURIComponent(id) + "&select=*",
+      this.base + "?id=eq." + encodeURIComponent(id) + "&select=*" + this.ownerFilter(userId),
       { headers: this.headers() }
     );
     if (!res.ok) await this.fail("get", res);

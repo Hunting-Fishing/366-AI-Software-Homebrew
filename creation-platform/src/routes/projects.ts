@@ -21,23 +21,23 @@ export function projectsRouter(store: ProjectStore): Router {
       return;
     }
     try {
-      const project = await store.save(name, prompt ?? "", code ?? "", target, files, binaries);
+      const project = await store.save(name, prompt ?? "", code ?? "", target, files, binaries, req.user?.id);
       res.json({ id: project.id });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 
-  router.get("/api/projects", async (_req: Request, res: Response) => {
+  router.get("/api/projects", async (req: Request, res: Response) => {
     try {
-      res.json(await store.list());
+      res.json(await store.list(req.user?.id));
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 
   router.get("/api/projects/:id", async (req: Request, res: Response) => {
-    const project = await store.get(req.params.id ?? "");
+    const project = await store.get(req.params.id ?? "", req.user?.id);
     if (!project) {
       res.status(404).json({ error: "not found" });
       return;
