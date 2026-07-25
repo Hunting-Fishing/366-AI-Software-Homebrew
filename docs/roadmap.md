@@ -150,14 +150,49 @@ Remaining: install `openhands-agent-server` from [`software-agent-sdk`](https://
 **1.3b — UI layout audit — ✅ done 25 Jul 2026**
 Done ahead of schedule because the prototype is going on a real domain. Three fixes in `public/index.html`: `100dvh` instead of `100vh` (mobile browsers count the address bar, pushing the prompt box off-screen); the 11-control header now scrolls in one row on phones instead of wrapping into four; and the accent colours were darkened because white text on `#6c7bff` measured **3.55:1**, failing WCAG AA on the Build button and every user chat bubble. Plus favicon, meta description, `focus-visible` outlines, and sane code wrapping. Details and measurements in [`step-02-hosting.md`](step-02-hosting.md) §2.5.
 
-**1.4 — Extend `check.ts` beyond Python**
-It currently checks only `.py` via `py_compile`. Add: `tsc --noEmit` / `vite build` for React, `dart analyze` for Flutter. The file's own comment already anticipates this. Verification is what turns "the AI wrote something" into "the AI wrote something that works."
+**1.4 — Extend `check.ts` beyond Python — ✅ done 25 Jul 2026**
+Was Python-only. Now covers the four code targets, feeding the same auto-fix loop.
 
-**1.5 — Version history per project**
-Every edit becomes a commit. This is the actual insurance against consequence #4 above — when an edit breaks something, you roll back instead of re-prompting your way out. `projects.files` is already jsonb; add a `project_versions` table.
+| Target | Check | Depends on |
+|---|---|---|
+| `python` | `py_compile` per file | Python, skipped if absent |
+| `react` | JSX/TS parse, import resolution, `package.json` validity, entry points | **nothing** |
+| `flutter` | `dart analyze`, else structure + truncation guard | Dart, degrades gracefully |
+| `godot` | `project.godot`, scene present, scene→script `res://` references resolve | nothing |
 
-**1.6 — Flutter live preview**
-`flutter build web` in the runner, served like the React path. Turns Flutter from download-a-ZIP into a real target.
+**React needs nothing installed.** `typescript` is already a dependency and its parser handles JSX, so syntax checking is a function call rather than an `npm install` — **44 ms for a 31-file project**, versus 60+ seconds for a real `vite build`. It catches what models actually get wrong: unclosed JSX, files cut off mid-write, and importing a component that was never written.
+
+The design rule throughout: **never report a problem you are not sure about.** Every failure costs a second model call, so a false positive burns money and can make the result worse. Targets with no real checker return `checked: false` rather than a false all-clear. Most of the 24 new tests exist to prove valid projects are left alone — extensionless imports, `index.jsx` barrels, bare npm packages, trailing whitespace. *24 tests added, 91 total.*
+
+Not done, deliberately: an actual `vite build`. That is the only way to be certain a project compiles, and it belongs behind a "verify build" button once execution moves into a sandbox — not inline on every generation.
+
+**1.5 — Version history per project — ✅ done 25 Jul 2026**
+The insurance against consequence #4 above. When an edit breaks something, you roll back instead of re-prompting your way out of it.
+
+**History is append-only.** A restore does not delete anything — it copies the old snapshot forward as a *new* version. So a rollback can itself be rolled back, and there is no way to lose work by pressing the wrong thing. The `project_versions` table has owner-only RLS and deliberately no UPDATE policy: versions are immutable once written.
+
+Saving an already-saved project now updates it in place and appends a version, rather than creating a duplicate project row each time — which is what `POST /api/projects` did before. New endpoints: `PUT /api/projects/:id`, `GET /api/projects/:id/versions`, `GET /api/projects/:id/versions/:n`, `POST /api/projects/:id/restore/:n`. A 🕘 History menu appears in the header once a project is saved.
+
+Implemented in both stores (JSON and Supabase). Verified end-to-end against a running server — three edits, roll back to v2, content returns and the version count goes to four — and the schema round-tripped on the live database including the duplicate-version constraint and cascade delete. *12 tests added, 103 total.*
+
+The same migration added `projects_user_idx` on `projects(user_id)`; listing a user's projects was a sequential scan.
+
+**1.6 — Mobile target — ✅ done 25 Jul 2026, but not the way this line originally read**
+
+The original plan was Flutter live preview via `flutter build web` in the runner. **Rejected on cost.** The Flutter SDK is 1.8–2.2 GB, and published Flutter Docker images run 10–16 GB against a current image of roughly 200 MB. It would have been the heaviest dependency in the project by a wide margin, for one target, plus 30–60s per build.
+
+Instead: a **📲 Mobile App (React + Capacitor)** target. It is a Vite + React project underneath, so it inherits the live preview, the build step, publishing and every React check for free. Capacitor wraps the built output into a native Android/iOS shell — and that wrapping runs on the developer's machine with Android Studio or Xcode, never on the server.
+
+**Net new server dependencies: zero.** That was the whole point.
+
+What the target adds beyond plain React:
+
+- A system prompt that designs for a phone rather than shrinking a desktop layout — single column, 44px touch targets, `env(safe-area-inset-*)`, bottom navigation, 16px minimum text so iOS does not zoom on focus.
+- `capacitor.config.json` validation: `appId` must be a real reverse-domain id, `webDir` must match Vite's `dist`.
+- A check for `base: "./"` in `vite.config.js`. Without it, absolute asset paths resolve against the device filesystem root and the app opens to a blank screen — a failure that appears only on a phone and never in preview, which makes it exactly the kind of thing worth catching automatically.
+- The preview renders at phone width in a device frame, because a phone app shown full-bleed across a desktop pane misrepresents what you are building.
+
+Flutter stays as a download-only target for anyone who wants Dart. *12 tests added, 115 total.*
 
 **1.7 — Per-project Supabase for generated apps**
 Unblocks the business/internal-tools category. Generated CRUD apps need a database of their own.

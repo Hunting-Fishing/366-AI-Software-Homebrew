@@ -37,7 +37,7 @@ import { LaneUnavailableError } from "./errors.js";
 import type { AgentEvent, AgentLane, LaneMode, LaneRequest } from "./types.js";
 
 /** Targets where editing an existing codebase is the normal workflow. */
-const EDITABLE_TARGETS = new Set(["web", "react", "flutter", "python"]);
+const EDITABLE_TARGETS = new Set(["web", "react", "mobile", "flutter", "python"]);
 
 export interface OpenHandsConfig {
   serverUrl: string;

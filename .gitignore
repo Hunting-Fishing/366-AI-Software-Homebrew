@@ -49,3 +49,6 @@ pnpm-debug.log*
 
 # ─── Repo import staging ───────────────────────
 _import/
+
+# ─── Scratch ───────────────────────────────────
+*.tmp.ts

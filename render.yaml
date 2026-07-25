@@ -21,7 +21,10 @@ services:
     dockerfilePath: ./Dockerfile
     plan: starter          # "free" sleeps after ~15 min idle
     region: oregon
-    healthCheckPath: /
+    # NOT "/" — with ACCESS_PASSWORD set every gated path returns 401,
+    # and Render marks any non-2xx as unhealthy, which restart-loops the
+    # service. /healthz is the one unauthenticated path.
+    healthCheckPath: /healthz
     autoDeploy: true
 
     disk:

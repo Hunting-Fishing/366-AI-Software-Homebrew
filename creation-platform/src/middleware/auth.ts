@@ -71,20 +71,33 @@ function expectedToken(pw: string): string {
   return crypto.createHash("sha256").update("creation-platform:" + pw).digest("hex");
 }
 
-const PAGE_STYLE = `body{font-family:system-ui,sans-serif;background:#0f1117;color:#e8eaf0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
-form{background:#181b24;border:1px solid #2a2f3f;border-radius:14px;padding:32px;width:320px;text-align:center}
-h1{font-size:18px;background:linear-gradient(90deg,#6c7bff,#8a5cf6);-webkit-background-clip:text;background-clip:text;color:transparent}
-input,button{width:100%;box-sizing:border-box;font:inherit;padding:10px;border-radius:8px;border:1px solid #2a2f3f;margin-top:12px}
-input{background:#1f2330;color:#e8eaf0}button{background:linear-gradient(90deg,#6c7bff,#8a5cf6);border:none;color:#fff;font-weight:600;cursor:pointer}
-p.err{color:#ff9db0;font-size:13px;min-height:16px}p.ok{color:#8fe3b0;font-size:13px;min-height:16px}
-.tabs{display:flex;gap:8px;margin-bottom:4px}.tabs button{margin-top:0;background:#1f2330;border:1px solid #2a2f3f;color:#aab;font-weight:500}
-.tabs button.on{background:linear-gradient(90deg,#6c7bff,#8a5cf6);border:none;color:#fff;font-weight:600}`;
+// Shared by both gate pages. These are the FIRST thing anyone sees on a
+// phone, so they carry the same mobile fixes as public/index.html:
+//   - 100dvh, because mobile browsers count the address bar in 100vh
+//   - fluid width, so the card never touches the screen edges
+//   - accents darkened to #4f61ff / #8556f6, because white on the old
+//     #6c7bff measured 3.55:1 and failed WCAG AA
+//   - 16px inputs, or iOS zooms the page on focus and the layout jumps
+//   - safe-area padding for notched devices
+const PAGE_STYLE = `*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0f1117;color:#e8eaf0;display:flex;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;margin:0;padding:24px calc(16px + env(safe-area-inset-left)) calc(24px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-right));-webkit-text-size-adjust:100%}
+form{background:#181b24;border:1px solid #2a2f3f;border-radius:14px;padding:28px 24px;width:100%;max-width:340px;text-align:center}
+h1{font-size:18px;margin:0 0 4px;background:linear-gradient(90deg,#4f61ff,#8556f6);-webkit-background-clip:text;background-clip:text;color:transparent}
+input,button{width:100%;font:inherit;font-size:16px;padding:12px;border-radius:8px;border:1px solid #2a2f3f;margin-top:12px;min-height:48px}
+input{background:#1f2330;color:#e8eaf0}
+input:focus,button:focus-visible{outline:2px solid #8b97ff;outline-offset:2px}
+button{background:linear-gradient(90deg,#4f61ff,#8556f6);border:none;color:#fff;font-weight:600;cursor:pointer}
+p.err{color:#ff9db0;font-size:14px;min-height:18px;margin:12px 0 0}
+p.ok{color:#8fe3b0;font-size:14px;min-height:18px;margin:8px 0 0}
+.tabs{display:flex;gap:8px;margin-bottom:4px}
+.tabs button{margin-top:12px;background:#1f2330;border:1px solid #2a2f3f;color:#aab;font-weight:500}
+.tabs button.on{background:linear-gradient(90deg,#4f61ff,#8556f6);border:none;color:#fff;font-weight:600}`;
 
 const LOGIN_PAGE = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Creation Platform — Login</title>
 <style>${PAGE_STYLE}</style></head>
 <body><form onsubmit="return go(event)"><h1>⚡ Creation Platform</h1>
-<input type="password" id="pw" placeholder="Team password" autofocus>
+<input type="password" id="pw" name="password" autocomplete="current-password" placeholder="Team password" autofocus>
 <button>Enter</button><p class="err" id="err"></p></form>
 <script>async function go(e){e.preventDefault();
 const r=await fetch("/api/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({password:document.getElementById("pw").value})});
@@ -97,15 +110,18 @@ const ACCOUNT_PAGE = `<!DOCTYPE html>
 <style>${PAGE_STYLE}</style></head>
 <body><form onsubmit="return go(event)"><h1>⚡ Creation Platform</h1>
 <div class="tabs"><button type="button" id="tabIn" class="on" onclick="mode('in')">Sign in</button><button type="button" id="tabUp" onclick="mode('up')">Create account</button></div>
-<input type="text" id="name" placeholder="Display name" style="display:none">
-<input type="email" id="email" placeholder="Email" autofocus>
-<input type="password" id="pw" placeholder="Password (min 6 characters)">
+<input type="text" id="name" name="name" autocomplete="name" placeholder="Display name" style="display:none">
+<input type="email" id="email" name="username" autocomplete="username" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Email" autofocus>
+<input type="password" id="pw" name="password" autocomplete="current-password" placeholder="Password (min 6 characters)">
 <button id="goBtn">Sign in</button><p class="err" id="err"></p><p class="ok" id="ok"></p></form>
 <script>
 let m="in";
 function mode(x){m=x;document.getElementById("tabIn").className=x==="in"?"on":"";document.getElementById("tabUp").className=x==="up"?"on":"";
 document.getElementById("name").style.display=x==="up"?"block":"none";
 document.getElementById("goBtn").textContent=x==="in"?"Sign in":"Create account";
+/* Tell the password manager which it is, so it offers "fill" when
+   signing in and "suggest a strong password" when signing up. */
+document.getElementById("pw").setAttribute("autocomplete",x==="in"?"current-password":"new-password");
 document.getElementById("err").textContent="";document.getElementById("ok").textContent="";}
 async function go(e){e.preventDefault();
 const err=document.getElementById("err"),ok=document.getElementById("ok");err.textContent="";ok.textContent="";
@@ -120,11 +136,30 @@ return false;}</script></body></html>`;
 
 // ---- the middleware -----------------------------------------------
 
+/**
+ * The one path that is never gated, in any mode.
+ *
+ * Render (and every other platform health check) polls an endpoint and
+ * marks the service unhealthy on any non-2xx. With ACCESS_PASSWORD set
+ * — which is exactly how this is deployed — every other path including
+ * "/" correctly returns 401, so pointing a health check at them puts
+ * the service into a restart loop.
+ *
+ * /healthz deliberately returns nothing but {"ok":true}. /api/health
+ * stays behind auth because it reports which providers are configured.
+ */
+const PUBLIC_HEALTH_PATH = "/healthz";
+
 export async function authMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
+  if (req.path === PUBLIC_HEALTH_PATH) {
+    next();
+    return;
+  }
+
   // Mode 1: real user accounts (Phase 3.3).
   if (accountsEnabled()) {
     if (req.path.startsWith("/api/auth/")) {

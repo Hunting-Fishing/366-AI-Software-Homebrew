@@ -69,6 +69,26 @@ Visitors clicking through will land on the login gate, not the builder. That is 
 
 ---
 
+## 2.0c The health check has to be `/healthz`
+
+Worth understanding, because getting it wrong produces a confusing failure.
+
+With `ACCESS_PASSWORD` set — which is how you deploy — `src/middleware/auth.ts` correctly returns **401 for every path**, including `/`. Render marks any non-2xx health check as unhealthy and restarts the service, so a health check pointed at `/` puts the deploy into a restart loop while the app itself is working perfectly.
+
+Measured on a production-shaped run:
+
+| Path | With `ACCESS_PASSWORD` set |
+|---|---|
+| `/healthz` | **200** `{"ok":true}` |
+| `/` | 401 (login page) |
+| `/api/health` | 401 |
+| `/api/projects` | 401 |
+| `/media/` | 401 |
+
+`/healthz` is allowlisted in the auth middleware and returns nothing but `{"ok":true}`. `/api/health` deliberately stays gated because it reports which providers have keys configured. `render.yaml` already points at `/healthz`.
+
+---
+
 ## 2.1 Deploy to Render
 
 1. Push the current code to GitHub. Render deploys what's in the repo.
@@ -118,6 +138,29 @@ Set these in Render → Environment. Never in the repo.
 | `NETLIFY_TOKEN` | Optional | The 🚀 Publish button |
 
 Leave the `*_MAX_TOKENS` vars unset unless you change models — the defaults are now each model's documented maximum.
+
+### Which Supabase key goes where
+
+The dashboard shows two tabs and the naming does not line up with our variable names. Use the **first** tab, "Publishable and secret API keys":
+
+| Dashboard | Env var | Notes |
+|---|---|---|
+| **Publishable key** — `sb_publishable_…` | `SUPABASE_ANON_KEY` | Safe in a browser. RLS applies. Setting it switches on accounts mode. |
+| **Secret key** — `sb_secret_…` (click the eye to reveal) | `SUPABASE_SERVICE_KEY` | Bypasses RLS. Server-side only. |
+
+Ignore the "Legacy anon, service_role API keys" tab entirely.
+
+**The variable names are misleading and that is our fault, not yours** — they date from when Supabase only issued JWT keys. `src/services/auth.ts` and `src/services/supabase.ts` only ever put these in `apikey` and `Authorization: Bearer` headers and never decode them, so the new key format is a drop-in replacement. Verified against project `ujkizgblscqcejghxemb` on 25 July 2026:
+
+| Endpoint | `sb_publishable_…` | Legacy `eyJhbGci…` |
+|---|---|---|
+| `GET /auth/v1/settings` | `200` | `200` |
+| `GET /auth/v1/user` (no session) | `401` | `403` |
+| `GET /rest/v1/projects` | `200`, `[]` | `200`, `[]` |
+
+Both work. The new key is marginally better behaved — `401 Unauthorized` is the correct status for "no session", where the legacy key returns `403 Forbidden`.
+
+> ⚠️ **Do not click "Disable JWT-based API keys" yet.** Switch the env vars over, restart, and confirm you can sign in first. Disabling the legacy keys while anything is still using them locks the running app out of its own database.
 
 ---
 

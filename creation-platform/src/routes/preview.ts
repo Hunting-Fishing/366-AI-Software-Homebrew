@@ -4,6 +4,7 @@
 
 import { Router, type Request, type Response } from "express";
 import { previewRunner } from "../services/runner.js";
+import { runsWithVite } from "../targets.js";
 import type { ProjectFile } from "../lib/files.js";
 
 export const previewRouter = Router();
@@ -15,10 +16,9 @@ previewRouter.post("/api/preview", async (req: Request, res: Response) => {
     return;
   }
   try {
-    const { url } =
-      kind === "react"
-        ? await previewRunner.startReact(files)
-        : await previewRunner.start(files);
+    const { url } = runsWithVite(kind ?? "")
+      ? await previewRunner.startReact(files)
+      : await previewRunner.start(files);
     res.json({ url });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });

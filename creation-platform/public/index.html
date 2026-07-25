@@ -49,6 +49,13 @@
   #toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
   #toolbar .status { font-size: 12px; color: var(--muted); margin-left: auto; }
   #preview { flex: 1; border: none; background: #fff; }
+  /* Mobile target: preview at phone width. A phone app shown full-bleed
+     across a desktop pane looks nothing like the thing you are building. */
+  #preview.phone {
+    align-self: center; width: 100%; max-width: 400px;
+    border: 1px solid var(--border); border-radius: 18px;
+    margin: 12px 0; box-shadow: 0 0 0 6px #0b0d13;
+  }
   #codeWrap { flex: 1; display: none; flex-direction: column; min-height: 0; background: #0b0d13; }
   #fileTabs { display: flex; gap: 4px; padding: 8px 12px 0; flex-wrap: wrap; }
   #fileTabs button { font-size: 12px; padding: 5px 10px; border-radius: 6px 6px 0 0; }
@@ -119,6 +126,7 @@
   <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
   <select id="providerSel" title="Which AI builds it"></select>
   <select id="projectSel" title="Load a saved project"><option value="">Load project…</option></select>
+  <select id="historySel" title="Roll this project back to an earlier version" style="display:none"><option value="">🕘 History…</option></select>
   <button id="saveBtn" disabled>💾 Save</button>
   <button id="downloadBtn" disabled>⬇ Download</button>
   <button id="publishBtn" disabled title="Put this app on the public web (needs NETLIFY_TOKEN in .env)">🚀 Publish</button>
@@ -260,6 +268,10 @@ function addMsg(kind, text) {
 
 function targetInfo(id) { return targetsInfo.find(t => t.id === id) || targetsInfo[0]; }
 function isWeb(p) { return p && p.target === "web"; }
+// "mobile" is a React project underneath — Capacitor only wraps the
+// built output, and that happens on the user's machine. So preview,
+// build and publish all treat it exactly like React.
+function isVite(p) { return p && (p.target === "react" || p.target === "mobile"); }
 
 function showTab(which) {
   $("preview").style.display = which === "preview" ? "" : "none";
@@ -283,7 +295,8 @@ function renderProject() {
   $("empty").style.display = "none";
   $("saveBtn").disabled = false;
   $("downloadBtn").disabled = false;
-  $("publishBtn").disabled = !(isWeb(project) || project.target === "react");
+  $("publishBtn").disabled = !(isWeb(project) || isVite(project));
+  $("preview").classList.toggle("phone", project.target === "mobile");
 
   if (isWeb(project)) {
     $("preview").removeAttribute("src");
@@ -300,7 +313,7 @@ function renderProject() {
     renderFileTabs();
     const info = targetInfo(project.target);
     $("runHint").textContent = "▶ How to run: " + info.runInstructions + " ";
-    if (project.target === "python" || project.target === "react") {
+    if (project.target === "python" || isVite(project)) {
       const b = document.createElement("button");
       b.textContent = "🌐 Run in browser";
       b.onclick = runLivePreview;
@@ -445,8 +458,8 @@ function useIdea(text) { $("promptBox").value = text; send(); }
 // ---- live Python preview (web-based, no ZIP needed) ----
 async function runLivePreview() {
   const note = addMsg("bot", "");
-  note.innerHTML = '<span class="spinner"></span>' + (project.target === "react"
-    ? "Starting your React app — first run installs packages (~1 minute)…"
+  note.innerHTML = '<span class="spinner"></span>' + (isVite(project)
+    ? "Starting your app — first run installs packages (~1 minute)…"
     : "Starting your app on this machine…");
   try {
     const res = await fetch("/api/preview", {
@@ -947,8 +960,8 @@ $("downloadBtn").onclick = async () => {
 };
 
 $("publishBtn").onclick = async () => {
-  if (!project || !(isWeb(project) || project.target === "react")) return;
-  const isReact = project.target === "react";
+  if (!project || !(isWeb(project) || isVite(project))) return;
+  const isReact = isVite(project);
   const name = prompt("Site name (becomes part of the web address):", firstPrompt.slice(0, 30));
   if (!name) return;
   if (!confirm("Publish this app to the PUBLIC web? Anyone with the link can see it.")) return;
@@ -977,28 +990,94 @@ $("publishBtn").onclick = async () => {
   }
 };
 
+// ── Version history ────────────────────────────────────────
+// currentProjectId is set once a project has been saved or loaded.
+// While it is set, Save updates that project in place and appends a
+// version, instead of creating a duplicate project every time.
+let currentProjectId = null;
+
+function applyLoaded(p) {
+  firstPrompt = p.prompt || p.name || firstPrompt;
+  project = { target: p.target || "web", code: p.code || "", files: p.files || [], binaries: p.binaries || [] };
+  activeFile = 0;
+  $("targetSel").value = project.target;
+  renderProject();
+}
+
+async function refreshHistory() {
+  const sel = $("historySel");
+  if (!currentProjectId) { sel.style.display = "none"; return; }
+  let versions = [];
+  try {
+    versions = await fetch("/api/projects/" + currentProjectId + "/versions").then(r => r.json());
+  } catch { /* older server without history — just hide the control */ }
+  if (!Array.isArray(versions) || versions.length === 0) { sel.style.display = "none"; return; }
+
+  sel.innerHTML = '<option value="">🕘 History (' + versions.length + ')…</option>';
+  for (const v of versions) {
+    const opt = document.createElement("option");
+    opt.value = String(v.version);
+    const when = new Date(v.createdAt).toLocaleString();
+    opt.textContent = "v" + v.version + " — " + v.label + "  (" + when + ")";
+    sel.appendChild(opt);
+  }
+  sel.style.display = "";
+}
+
 $("saveBtn").onclick = async () => {
-  const name = prompt("Name this project:", firstPrompt.slice(0, 40));
-  if (!name) return;
-  await fetch("/api/projects", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name, prompt: firstPrompt, target: project.target, code: project.code, files: project.files, binaries: project.binaries || [] }),
-  });
-  refreshProjects();
-  addMsg("bot", "💾 Saved as “" + name + "”.");
+  try {
+    if (currentProjectId) {
+      const res = await fetch("/api/projects/" + currentProjectId, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: firstPrompt, target: project.target, code: project.code, files: project.files, binaries: project.binaries || [] }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "save failed");
+      await refreshHistory();
+      addMsg("bot", "💾 Saved. Earlier versions are in the History menu.");
+      return;
+    }
+    const name = prompt("Name this project:", firstPrompt.slice(0, 40));
+    if (!name) return;
+    const res = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name, prompt: firstPrompt, target: project.target, code: project.code, files: project.files, binaries: project.binaries || [] }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || "save failed");
+    currentProjectId = (await res.json()).id;
+    await refreshProjects();
+    await refreshHistory();
+    addMsg("bot", "💾 Saved as “" + name + "”. From now on Save keeps a version each time.");
+  } catch (err) {
+    addMsg("err", "Save failed: " + err.message);
+  }
 };
 
 $("projectSel").onchange = async (e) => {
   if (!e.target.value) return;
   const p = await fetch("/api/projects/" + e.target.value).then(r => r.json());
-  firstPrompt = p.prompt || p.name;
-  project = { target: p.target || "web", code: p.code || "", files: p.files || [], binaries: p.binaries || [] };
-  activeFile = 0;
-  $("targetSel").value = project.target;
-  renderProject();
+  currentProjectId = p.id;
+  applyLoaded(p);
+  await refreshHistory();
   addMsg("bot", "📂 Loaded “" + p.name + "”. Tell me what to change.");
   e.target.value = "";
+};
+
+$("historySel").onchange = async (e) => {
+  const version = e.target.value;
+  e.target.value = "";
+  if (!version || !currentProjectId) return;
+  if (!confirm("Roll back to version " + version + "?\n\nNothing is lost — the rollback becomes a new version, so you can undo it.")) return;
+  try {
+    const res = await fetch("/api/projects/" + currentProjectId + "/restore/" + version, { method: "POST" });
+    if (!res.ok) throw new Error((await res.json()).error || "restore failed");
+    applyLoaded(await res.json());
+    await refreshHistory();
+    addMsg("bot", "↩️ Rolled back to version " + version + ". That rollback is itself a version, so you can undo it.");
+  } catch (err) {
+    addMsg("err", "Restore failed: " + err.message);
+  }
 };
 
 init();

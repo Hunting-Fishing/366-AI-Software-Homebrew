@@ -42,6 +42,14 @@ app.post("/api/login", loginHandler);
 app.use(authRouter());
 app.use(express.static(path.join(__dirname, "..", "public")));
 
+// Platform health check. Unauthenticated by design (see auth.ts), so
+// it must never report anything about configuration. Render polls this.
+app.get("/healthz", (_req, res) => {
+  res.json({ ok: true });
+});
+
+// Richer health data — stays behind auth, because it reports which
+// providers have keys configured.
 app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,

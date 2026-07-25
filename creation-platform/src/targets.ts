@@ -110,6 +110,38 @@ ${SHARED_QUALITY_RULES}
 ${MULTI_FILE_FORMAT}`,
   },
 
+  mobile: {
+    id: "mobile",
+    label: "📲 Mobile App (React + Capacitor)",
+    mode: "multi-file",
+    fallbackFile: "src/App.jsx",
+    runInstructions:
+      "Click 'Run in browser' for a live preview — it is the real app. To put it on a phone, download the ZIP then:  npm install  →  npm run build  →  npx cap add android  →  npx cap open android.  Building the native package needs Android Studio (or Xcode for iOS) on your own machine — nothing extra on this server.",
+    systemPrompt: `You are an expert mobile app developer inside an AI app-builder product.
+
+You build mobile apps as Vite + React projects wrapped with Capacitor. The web build IS the app — Capacitor packages it into a native Android/iOS shell.
+
+RULES — follow every one:
+1. Output a complete, runnable Vite + React project that also works as a Capacitor app.
+2. Always include exactly these config files:
+   - package.json with "dependencies": {"react": "^18.3.1", "react-dom": "^18.3.1", "@capacitor/core": "^6.1.2"}, "devDependencies": {"vite": "^5.4.0", "@vitejs/plugin-react": "^4.3.0", "@capacitor/cli": "^6.1.2"}, and "scripts": {"dev": "vite", "build": "vite build", "preview": "vite preview"}.
+   - vite.config.js using @vitejs/plugin-react, with base: "./" (Capacitor serves from the filesystem, so absolute paths break).
+   - capacitor.config.json with appId (reverse-domain, e.g. "com.example.myapp"), appName, and "webDir": "dist".
+   - index.html with <div id="root"></div>, <script type="module" src="/src/main.jsx"></script>, and a viewport meta tag including viewport-fit=cover.
+   - src/main.jsx mounting <App /> with ReactDOM.createRoot.
+3. Split the app properly: src/App.jsx plus focused components in src/components/, and one src/styles.css imported from main.jsx. No Tailwind, no npm packages beyond rule 2.
+4. DESIGN FOR A PHONE, not a desktop browser shrunk down:
+   - Single-column layout. Touch targets at least 44x44px. No hover-only interactions.
+   - Respect the notch and home indicator with env(safe-area-inset-*) padding.
+   - Bottom tab bar or a large top app bar for navigation — not a desktop sidebar.
+   - Comfortable text size (16px minimum, so iOS does not zoom on input focus).
+   - Momentum scrolling, and no horizontal overflow at 360px wide.
+5. Modern React: function components and hooks only. Keep state in React state (no localStorage).
+6. Assume no network unless the user asks for it. Use realistic in-memory sample data.
+${SHARED_QUALITY_RULES}
+${MULTI_FILE_FORMAT}`,
+  },
+
   godot: {
     id: "godot",
     label: "🎮 Godot 4 Game (GDScript)",
@@ -178,6 +210,21 @@ ${MULTI_FILE_FORMAT}`,
 
 export function getTarget(id: string | undefined): Target {
   return targets[id ?? "web"] ?? targets["web"]!;
+}
+
+/**
+ * Targets that produce a Vite + React project.
+ *
+ * "mobile" is React underneath — Capacitor only wraps the built web
+ * assets in a native shell, and that wrapping happens on the
+ * developer's machine, never here. So the live preview, the build
+ * step, publishing and the React checks all apply unchanged. One set
+ * added here is why the mobile target needed no new server dependency.
+ */
+const VITE_TARGETS = new Set(["react", "mobile"]);
+
+export function runsWithVite(id: string): boolean {
+  return VITE_TARGETS.has(id);
 }
 
 export function listTargets(): Array<Pick<Target, "id" | "label" | "mode" | "runInstructions">> {

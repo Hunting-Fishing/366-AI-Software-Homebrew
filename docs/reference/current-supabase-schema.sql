@@ -76,6 +76,40 @@ create policy "own projects delete"
 
 
 -- ─────────────────────────────────────────────────────────────
+-- ADDED 2026-07-25 — migration `phase_1_5_project_versions`
+--
+-- create table public.project_versions (
+--   id          bigint generated always as identity primary key,
+--   project_id  text        not null references public.projects (id) on delete cascade,
+--   version     integer     not null,
+--   label       text,
+--   prompt      text        not null default '',
+--   target      text        not null default 'web',
+--   code        text        not null default '',
+--   files       jsonb       not null default '[]'::jsonb,
+--   binaries    jsonb       not null default '[]'::jsonb,
+--   user_id     uuid        references auth.users (id),
+--   created_at  timestamptz not null default now(),
+--   unique (project_id, version)
+-- );
+--
+-- RLS on, owner-only SELECT / INSERT / DELETE. Deliberately NO update
+-- policy: versions are immutable once written. Restoring copies a
+-- snapshot forward as a new version rather than mutating history, so an
+-- undo can itself be undone.
+--
+-- Also added in the same migration:
+--   create index projects_user_idx on public.projects (user_id);
+-- which closes open question 4 below — "list my projects" was a
+-- sequential scan.
+--
+-- Verified on the live database 2026-07-25: insert round-trip, the
+-- unique(project_id, version) constraint rejects duplicates, and
+-- deleting a project cascades its versions away. Probe rows removed;
+-- both tables back to 0 rows.
+
+
+-- ─────────────────────────────────────────────────────────────
 -- ✅ RESOLVED 2026-07-25 — migration `revoke_public_execute_on_definer_functions`
 --
 --   revoke execute on function public.handle_new_user() from anon, authenticated, public;

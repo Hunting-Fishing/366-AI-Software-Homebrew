@@ -26,6 +26,8 @@ Start with [`docs/roadmap.md`](docs/roadmap.md).
 
 Requires **Node 18+**. Python 3 and FFmpeg are optional — without them the live Python preview and the video studio are skipped, everything else works.
 
+Deliberately *not* required, on the server or anywhere else: Flutter SDK, Android SDK, Xcode. The mobile target builds as a web app and Capacitor wraps it natively on your own machine.
+
 ```bash
 cd creation-platform
 npm install
@@ -52,7 +54,7 @@ An Express server wraps a **multi-LLM gateway** (Claude, GPT, Gemini behind one 
 |---|---|
 | Model gateway | `src/providers/` — anthropic · openai · google · images · speech · videos |
 | Agent lanes | `src/lanes/` — the create/edit routing seam |
-| Targets | `src/targets.ts` — web · react · flutter · python · godot · book · video |
+| Targets | `src/targets.ts` — web · react · **mobile** · flutter · python · godot · book · video |
 | Storage | `src/services/supabase.ts` — PostgREST, no SDK |
 | Auth | `src/middleware/auth.ts` — accounts → team password → open |
 | Execution | `src/services/runner.ts` — **runs on the host today**, see below |
