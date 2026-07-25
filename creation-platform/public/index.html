@@ -456,25 +456,57 @@ async function send() {
 function useIdea(text) { $("promptBox").value = text; send(); }
 
 // ---- live Python preview (web-based, no ZIP needed) ----
+// A proxy (Render, Cloudflare) returns an HTML error page, not JSON, when
+// something goes wrong upstream. Calling .json() on that throws
+// "Unexpected token '<'", which tells you nothing. Read it as text first
+// and report what actually happened.
+async function readJson(res) {
+  const body = await res.text();
+  try {
+    return JSON.parse(body);
+  } catch {
+    if (body.trim().startsWith("<")) {
+      throw new Error(
+        "The server returned a web page instead of data (HTTP " + res.status + "). " +
+        "That usually means the request timed out at the proxy, or the server restarted."
+      );
+    }
+    throw new Error("Unreadable response from the server (HTTP " + res.status + ").");
+  }
+}
+
 async function runLivePreview() {
   const note = addMsg("bot", "");
-  note.innerHTML = '<span class="spinner"></span>' + (isVite(project)
-    ? "Starting your app — first run installs packages (~1 minute)…"
-    : "Starting your app on this machine…");
+  const spin = (t) => { note.innerHTML = '<span class="spinner"></span>' + t; };
+  spin("Starting…");
   try {
     const res = await fetch("/api/preview", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ files: project.files, kind: project.target }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Preview failed");
+    const started = await readJson(res);
+    if (!res.ok && res.status !== 202) throw new Error(started.error || "Preview failed");
+
+    // The server is working in the background. Poll rather than holding
+    // a request open — see src/routes/preview.ts for why that matters.
+    const deadline = Date.now() + 5 * 60 * 1000;
+    let data = started;
+    while (data.state !== "ready" && data.state !== "error") {
+      if (Date.now() > deadline) throw new Error("Gave up waiting after 5 minutes.");
+      await new Promise((r) => setTimeout(r, 1500));
+      const secs = Math.round((data.elapsedMs || 0) / 1000);
+      spin((data.message || "Working") + (secs > 3 ? " — " + secs + "s" : "") + "…");
+      data = await readJson(await fetch("/api/preview"));
+    }
+    if (data.state === "error") throw new Error(data.message || "Preview failed to start");
+
     const iframe = $("preview");
     iframe.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin");
     iframe.removeAttribute("srcdoc");
-    iframe.src = data.url;
+    iframe.src = data.url + "?t=" + Date.now();
     showTab("preview");
-    note.textContent = "🌐 Running live in the preview! (It runs locally on this machine — it stops when you build something new.)";
+    note.textContent = "🌐 Running live in the preview. It stops when you build something new.";
   } catch (err) {
     note.textContent = "⚠️ " + err.message;
     note.className = "msg err";

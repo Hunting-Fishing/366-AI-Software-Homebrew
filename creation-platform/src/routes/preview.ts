@@ -1,6 +1,16 @@
-// Live preview routes: run a generated Python app locally and
-// show it in the browser. POST starts (replacing any previous
-// preview), DELETE stops.
+// Live preview control.
+//
+//   POST   /api/preview  → start a run, return IMMEDIATELY
+//   GET    /api/preview  → poll: installing | starting | ready | error
+//   DELETE /api/preview  → stop
+//
+// POST used to block for the whole 60–120 seconds a React preview takes
+// to install and boot. Behind a proxy that is fatal: Render's edge gives
+// up around 100 seconds and returns its own HTML error page, so the
+// browser's res.json() failed with "Unexpected token '<'" — an error
+// that points nowhere near the real problem. Returning straight away and
+// polling removes the long-held request entirely, and lets the UI show
+// which phase it is in instead of an unmoving spinner.
 
 import { Router, type Request, type Response } from "express";
 import { previewRunner } from "../services/runner.js";
@@ -9,20 +19,22 @@ import type { ProjectFile } from "../lib/files.js";
 
 export const previewRouter = Router();
 
-previewRouter.post("/api/preview", async (req: Request, res: Response) => {
+previewRouter.post("/api/preview", (req: Request, res: Response) => {
   const { files, kind } = req.body as { files?: ProjectFile[]; kind?: string };
   if (!files || files.length === 0) {
     res.status(400).json({ error: "files are required" });
     return;
   }
   try {
-    const { url } = runsWithVite(kind ?? "")
-      ? await previewRunner.startReact(files)
-      : await previewRunner.start(files);
-    res.json({ url });
+    // 202: accepted, not finished. The browser polls GET from here.
+    res.status(202).json(previewRunner.begin(files, runsWithVite(kind ?? "")));
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
+});
+
+previewRouter.get("/api/preview", (_req: Request, res: Response) => {
+  res.json(previewRunner.status());
 });
 
 previewRouter.delete("/api/preview", (_req: Request, res: Response) => {

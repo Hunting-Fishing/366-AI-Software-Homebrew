@@ -77,10 +77,88 @@ function waitForPort(port: number, tries = 30, delayMs = 500): Promise<boolean> 
  */
 export const LIVE_PATH = "/live";
 
+/**
+ * Starting a preview takes 60–120 seconds for React: npm install, then
+ * waiting for Vite to bind a port. It used to happen inside the
+ * POST /api/preview request, which meant the browser held one HTTP
+ * request open for the whole time.
+ *
+ * That works on localhost and fails behind a proxy. Render's edge times
+ * out around 100 seconds and returns its OWN html error page, so the
+ * browser's `await res.json()` blew up with "Unexpected token '<'" —
+ * an error that says nothing about the real cause.
+ *
+ * So the request now returns immediately and the browser polls. Same
+ * reason Lovable shows you a progress log instead of a frozen spinner.
+ */
+export type PreviewState = "idle" | "installing" | "starting" | "ready" | "error";
+
+export interface PreviewStatus {
+  state: PreviewState;
+  /** Same-origin path once ready. */
+  url?: string;
+  /** Human-readable phase, or the failure reason. */
+  message?: string;
+  /** Milliseconds since this run began — drives the progress text. */
+  elapsedMs?: number;
+}
+
 export class PreviewRunner {
   private child: ChildProcess | null = null;
   private dir: string | null = null;
   private activePort: number | null = null;
+  private state: PreviewState = "idle";
+  private message = "";
+  private startedAt = 0;
+  /** Incremented on every begin(), so a superseded run cannot report back. */
+  private runId = 0;
+
+  status(): PreviewStatus {
+    const s: PreviewStatus = { state: this.state };
+    if (this.message) s.message = this.message;
+    if (this.state === "ready") s.url = LIVE_PATH + "/";
+    if (this.state === "installing" || this.state === "starting") {
+      s.elapsedMs = Date.now() - this.startedAt;
+    }
+    return s;
+  }
+
+  /**
+   * Kick off a preview and return immediately. Poll status() for the
+   * result. Starting a new one supersedes any run already in progress.
+   */
+  begin(files: ProjectFile[], vite: boolean): PreviewStatus {
+    const id = ++this.runId;
+    this.stop();
+    this.runId = id; // stop() must not invalidate the run we just claimed
+    this.state = vite ? "installing" : "starting";
+    this.message = vite
+      ? "Installing packages — this takes about a minute the first time"
+      : "Starting the app";
+    this.startedAt = Date.now();
+
+    const work = vite ? this.startReact(files, id) : this.start(files);
+    work
+      .then(() => {
+        if (id !== this.runId) return; // superseded
+        this.state = "ready";
+        this.message = "";
+      })
+      .catch((err: unknown) => {
+        if (id !== this.runId) return;
+        this.state = "error";
+        this.message = err instanceof Error ? err.message : String(err);
+      });
+
+    return this.status();
+  }
+
+  /** Called by startReact between its two phases. */
+  private phase(id: number, state: PreviewState, message: string): void {
+    if (id !== this.runId) return;
+    this.state = state;
+    this.message = message;
+  }
 
   /** Port the current preview listens on, or null when nothing is running. */
   port(): number | null {
@@ -88,8 +166,6 @@ export class PreviewRunner {
   }
 
   async start(files: ProjectFile[]): Promise<{ url: string }> {
-    this.stop();
-
     const py = pythonCmd();
     if (!py) {
       throw new Error(
@@ -133,8 +209,7 @@ export class PreviewRunner {
 
   /** Live preview for React (Vite) projects: npm install, then
       run the dev server. First run takes ~1 minute (installing). */
-  async startReact(files: ProjectFile[]): Promise<{ url: string }> {
-    this.stop();
+  async startReact(files: ProjectFile[], runId = 0): Promise<{ url: string }> {
     if (!files.some((f) => f.path === "package.json")) {
       throw new Error("This project has no package.json to run.");
     }
@@ -152,15 +227,38 @@ export class PreviewRunner {
 
     // 1. Install dependencies (uses the machine's npm cache, so
     //    repeat runs are much faster).
+    //
+    //    The install child is tracked so stop() can kill it. Without
+    //    that, pressing "Run in browser" twice leaves the first install
+    //    running to completion in the background — burning CPU on a
+    //    small instance, and keeping the process alive after everything
+    //    else has been torn down.
     await new Promise<void>((resolve, reject) => {
       const p = spawn(npm, ["install", "--no-audit", "--no-fund"], { cwd: dir });
+      this.child = p;
       let err = "";
       p.stderr?.on("data", (d: Buffer) => (err += d.toString()));
-      p.on("close", (code) =>
-        code === 0 ? resolve() : reject(new Error("npm install failed:\n" + err.slice(-800)))
-      );
+      p.on("close", (code, signal) => {
+        if (this.child === p) this.child = null;
+        if (code === 0) return resolve();
+        // Killed by stop() — a newer run superseded this one. Not an error.
+        if (signal) return reject(new Error("Preview was cancelled."));
+        // Exit 137 is SIGKILL, which on a small container almost always
+        // means the OOM killer. Saying so saves a long hunt.
+        const oom = code === 137 || /killed|out of memory|ENOMEM/i.test(err);
+        reject(
+          new Error(
+            oom
+              ? "Ran out of memory installing packages. The server instance is too small for a " +
+                "React build — a 1GB plan or larger is needed for this target."
+              : "npm install failed:\n" + err.slice(-800)
+          )
+        );
+      });
       p.on("error", () => reject(new Error("npm not found — install Node.js from nodejs.org.")));
     });
+
+    this.phase(runId, "starting", "Packages installed — starting the dev server");
 
     // 2. Start the Vite dev server.
     //    --base matters: the app is reached through this server at
@@ -204,6 +302,9 @@ export class PreviewRunner {
     }
     this.child = null;
     this.activePort = null;
+    this.state = "idle";
+    this.message = "";
+    this.runId++; // any in-flight run is now superseded
     if (this.dir) {
       try {
         fs.rmSync(this.dir, { recursive: true, force: true });
