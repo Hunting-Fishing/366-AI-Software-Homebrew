@@ -22,20 +22,49 @@ Start with [`docs/roadmap.md`](docs/roadmap.md).
 
 ---
 
-## Run it locally
+## Run it
 
-Requires **Node 18+**. Python 3 and FFmpeg are optional — without them the live Python preview and the video studio are skipped, everything else works.
+**Double-click `START-HERE.bat`.**
 
-Deliberately *not* required, on the server or anywhere else: Flutter SDK, Android SDK, Xcode. The mobile target builds as a web app and Capacitor wraps it natively on your own machine.
+It checks Node is installed, creates the settings file if missing, installs dependencies on first run, starts the server and opens your browser. If something is missing it opens the right file and tells you exactly what to paste where.
+
+You need **two values** in `creation-platform/.env`, both marked `← FILL THIS IN`:
+
+| | Where to get it |
+|---|---|
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) → API Keys |
+| `SUPABASE_SERVICE_KEY` | Supabase → Project Settings → API Keys → **first tab** → Secret keys → eye icon |
+
+Everything else is pre-filled. `.env` is gitignored — your keys never reach GitHub.
+
+<details>
+<summary>Command line instead</summary>
 
 ```bash
 cd creation-platform
 npm install
-cp ../.env.example .env        # then fill in at least one model key
+npm run doctor      # what is configured, what is not
 npm run dev
 ```
+</details>
 
-Open http://localhost:3000.
+Every start prints a check like this, so you always know what is on:
+
+```
+  ┌─ Startup check ────────────────────────────────────
+  │ ✓ AI model        Claude
+  │ ✓ Storage         Supabase — projects survive restarts
+  │ ✓ Sign-in         Per-user accounts
+  │ ✓ Python preview  Available — generated Flask apps run in the browser
+  │ ✓ Video studio    FFmpeg found — movie assembly, narration and music work
+  │ ! Publish button  Off. Add NETLIFY_TOKEN to publish generated apps to the web.
+  │ ! Agent lane B    Off. Edits use the in-house loop.
+  └────────────────────────────────────────────────────
+```
+
+A `!` is a feature you have not switched on, not a problem. Only a `✗` stops the app.
+
+Requires **Node 18+**. Python 3 and FFmpeg are optional. Deliberately *not* required anywhere: Flutter SDK, Android SDK, Xcode — the mobile target builds as a web app and Capacitor wraps it natively on your own machine.
 
 Quality gate — both must pass before any change is called done:
 

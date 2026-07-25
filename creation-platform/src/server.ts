@@ -24,17 +24,17 @@ import { authMiddleware, loginHandler } from "./middleware/auth.js";
 import { authRouter } from "./routes/auth.js";
 import { accountsEnabled } from "./services/auth.js";
 import { availableImageProviders } from "./providers/images.js";
+import { runDoctor } from "./doctor.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Explain the setup before doing anything else. Exits with a readable
+// message rather than a stack trace when something required is missing.
+if (!runDoctor()) process.exit(1);
+
 const app = express();
 // Phase 3: real database when Supabase is configured; JSON files otherwise.
 const store = supabaseConfigured() ? new SupabaseProjectStore() : new JsonProjectStore();
-console.log(supabaseConfigured()
-  ? "  🗄  Storage: Supabase Postgres (cloud database)"
-  : "  🗄  Storage: local JSON files (add Supabase keys for cloud storage — see SETUP-SUPABASE.md)");
-console.log(accountsEnabled()
-  ? "  👤 Accounts: ON — per-user sign-in via Supabase Auth"
-  : "  👤 Accounts: off (add SUPABASE_ANON_KEY to enable — see SETUP-SUPABASE.md)");
 
 app.use(express.json({ limit: "10mb" }));
 app.use(authMiddleware);
