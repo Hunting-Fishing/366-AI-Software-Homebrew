@@ -194,6 +194,14 @@ What the target adds beyond plain React:
 
 Flutter stays as a download-only target for anyone who wants Dart. *12 tests added, 115 total.*
 
+**1.6b — Live preview on a deployed server — ✅ fixed 26 Jul 2026**
+
+Found the moment the platform went live on Render. `runner.ts` returned `http://127.0.0.1:PORT/` and the browser loaded it directly. On a laptop that works, because the browser and the preview process are the same machine. **On a server they are not** — `127.0.0.1` is the *user's own device*, so "Run in browser" failed with connection refused for every deployed user. It only ever worked for whoever was running it locally, which is exactly why it survived this long.
+
+The preview is now proxied through the platform's own origin at `/live`, so the browser is given a same-origin path and the address resolves correctly in both places. Vite is launched with `--base /live/` so its module and asset URLs carry the prefix — without that the page loads and every script 404s. WebSocket upgrades are forwarded too, so hot reload keeps working.
+
+No proxy library: Node's `http` does this in a few lines, and the router is mounted before `express.json()` so the raw request body is still pipeable. Verified end to end against a running Flask preview — `/live/` and `/live/ping` both return correctly. *5 tests added, 120 total.*
+
 **1.7 — Per-project Supabase for generated apps**
 Unblocks the business/internal-tools category. Generated CRUD apps need a database of their own.
 

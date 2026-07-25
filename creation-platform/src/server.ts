@@ -25,6 +25,7 @@ import { authRouter } from "./routes/auth.js";
 import { accountsEnabled } from "./services/auth.js";
 import { availableImageProviders } from "./providers/images.js";
 import { runDoctor } from "./doctor.js";
+import { liveRouter, attachLiveWebSocketProxy } from "./routes/live.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -36,8 +37,13 @@ const app = express();
 // Phase 3: real database when Supabase is configured; JSON files otherwise.
 const store = supabaseConfigured() ? new SupabaseProjectStore() : new JsonProjectStore();
 
-app.use(express.json({ limit: "10mb" }));
 app.use(authMiddleware);
+
+// Mounted BEFORE express.json() on purpose: the preview proxy pipes the
+// raw request body upstream, and a body parser would have consumed it.
+app.use(liveRouter);
+
+app.use(express.json({ limit: "10mb" }));
 app.post("/api/login", loginHandler);
 app.use(authRouter());
 app.use(express.static(path.join(__dirname, "..", "public")));
@@ -69,7 +75,7 @@ app.use(publishRouter);
 app.use(videoRouter);
 app.use("/media", express.static(MEDIA_DIR));
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   console.log("");
   console.log("  ✅ Creation Platform v2.0 is running!");
   console.log(`  👉 Open http://localhost:${config.port} in your browser`);
@@ -82,3 +88,6 @@ app.listen(config.port, () => {
   }
   console.log("");
 });
+
+// Vite's hot reload speaks WebSocket, which Express does not handle.
+attachLiveWebSocketProxy(server);

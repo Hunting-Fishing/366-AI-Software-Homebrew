@@ -65,9 +65,27 @@ function waitForPort(port: number, tries = 30, delayMs = 500): Promise<boolean> 
   });
 }
 
+/**
+ * Path the preview is served on, through this server's own origin.
+ *
+ * The preview process listens on 127.0.0.1 INSIDE this machine. Handing
+ * that address to the browser only works when the browser happens to be
+ * on the same machine — true on a laptop, false for every user of a
+ * deployed server, where 127.0.0.1 is their own device. So the browser
+ * is given this same-origin path instead and routes/live.ts proxies it
+ * through. One code path, works in both places.
+ */
+export const LIVE_PATH = "/live";
+
 export class PreviewRunner {
   private child: ChildProcess | null = null;
   private dir: string | null = null;
+  private activePort: number | null = null;
+
+  /** Port the current preview listens on, or null when nothing is running. */
+  port(): number | null {
+    return this.activePort;
+  }
 
   async start(files: ProjectFile[]): Promise<{ url: string }> {
     this.stop();
@@ -99,6 +117,7 @@ export class PreviewRunner {
 
     this.child = child;
     this.dir = dir;
+    this.activePort = port;
 
     const up = await waitForPort(port);
     if (!up) {
@@ -109,7 +128,7 @@ export class PreviewRunner {
         : "";
       throw new Error("The app failed to start.\n" + detail + hint);
     }
-    return { url: `http://127.0.0.1:${port}/` };
+    return { url: LIVE_PATH + "/" };
   }
 
   /** Live preview for React (Vite) projects: npm install, then
@@ -144,14 +163,27 @@ export class PreviewRunner {
     });
 
     // 2. Start the Vite dev server.
+    //    --base matters: the app is reached through this server at
+    //    /live/, so Vite has to emit its asset and module URLs with
+    //    that prefix. Without it the page loads and every <script> and
+    //    stylesheet 404s.
     let errOutput = "";
-    const child = spawn(npx, ["vite", "--port", String(port), "--strictPort", "--host", "127.0.0.1"], {
-      cwd: dir,
-    });
+    const child = spawn(
+      npx,
+      [
+        "vite",
+        "--port", String(port),
+        "--strictPort",
+        "--host", "127.0.0.1",
+        "--base", LIVE_PATH + "/",
+      ],
+      { cwd: dir }
+    );
     child.stderr?.on("data", (d: Buffer) => (errOutput += d.toString()));
     child.stdout?.on("data", (d: Buffer) => (errOutput += d.toString()));
     this.child = child;
     this.dir = dir;
+    this.activePort = port;
 
     const up = await waitForPort(port, 60, 500);
     if (!up) {
@@ -159,7 +191,7 @@ export class PreviewRunner {
       this.stop();
       throw new Error("The React dev server failed to start.\n" + detail);
     }
-    return { url: `http://127.0.0.1:${port}/` };
+    return { url: LIVE_PATH + "/" };
   }
 
   stop(): void {
@@ -171,6 +203,7 @@ export class PreviewRunner {
       }
     }
     this.child = null;
+    this.activePort = null;
     if (this.dir) {
       try {
         fs.rmSync(this.dir, { recursive: true, force: true });
