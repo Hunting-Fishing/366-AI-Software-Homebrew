@@ -3,16 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Creation Platform — AI App Builder</title>
+<title>366 Creation Platform — AI App Builder</title>
+<meta name="description" content="Describe an app, watch it get built, edit it by chatting. Web, React, Flutter, Python, Godot games, books and video — all from one prompt.">
+<meta name="theme-color" content="#0f1117">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%234f61ff'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root {
     --bg: #0f1117; --panel: #181b24; --panel2: #1f2330;
     --border: #2a2f3f; --text: #e8eaf0; --muted: #8b91a5;
-    --accent: #6c7bff; --accent2: #8a5cf6; --good: #3ecf8e;
+    /* Accents darkened from #6c7bff / #8a5cf6 so white text on them
+       clears WCAG AA (4.5:1). The old pair measured 3.55 and 4.25 —
+       both failed for the Build button and user chat bubbles. */
+    --accent: #4f61ff; --accent2: #8556f6; --good: #3ecf8e;
+    /* Brighter, for focus rings only — never behind white text. */
+    --ring: #8b97ff;
   }
   * { box-sizing: border-box; margin: 0; }
-  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+  /* 100dvh, not 100vh: on mobile browsers 100vh includes the address
+     bar, which pushed the prompt box off the bottom of the screen. */
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
 
   header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
   header h1 { font-size: 16px; font-weight: 700; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -31,7 +42,8 @@
 
   #inputRow { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
   #promptBox { flex: 1; resize: none; height: 64px; font: inherit; font-size: 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px; }
-  #promptBox:focus { outline: 2px solid var(--accent); }
+  #promptBox:focus { outline: 2px solid var(--ring); }
+  select:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
   #right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   #toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
@@ -41,7 +53,9 @@
   #fileTabs { display: flex; gap: 4px; padding: 8px 12px 0; flex-wrap: wrap; }
   #fileTabs button { font-size: 12px; padding: 5px 10px; border-radius: 6px 6px 0 0; }
   #fileTabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  #codeView { flex: 1; overflow: auto; margin: 0; padding: 16px; font: 12px/1.5 ui-monospace, Consolas, monospace; color: #c9d4ff; white-space: pre-wrap; word-break: break-all; }
+  /* overflow-wrap:anywhere breaks only when a line genuinely cannot
+     fit. word-break:break-all was splitting every identifier mid-word. */
+  #codeView { flex: 1; overflow: auto; margin: 0; padding: 16px; font: 12px/1.5 ui-monospace, Consolas, monospace; color: #c9d4ff; white-space: pre-wrap; overflow-wrap: anywhere; }
   #runHint { display: none; padding: 10px 14px; font-size: 13px; color: var(--good); background: #12241c; border-top: 1px solid var(--border); }
 
   #empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); background: var(--bg); }
@@ -54,7 +68,31 @@
 
   @media (max-width: 800px) {
     main { flex-direction: column; }
-    #left { width: 100%; height: 45%; border-right: none; border-bottom: 1px solid var(--border); }
+    #left {
+      width: 100%; height: 45%; min-height: 220px;
+      border-right: none; border-bottom: 1px solid var(--border);
+    }
+    #right { min-height: 260px; }
+
+    /* The header holds up to 11 controls. Left to wrap, it stacked
+       into ~6 rows on a phone and ate most of the viewport before
+       the app even started. One scrollable row instead. */
+    header {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      gap: 8px;
+    }
+    header::-webkit-scrollbar { display: none; }
+    header > * { flex-shrink: 0; }
+    header .spacer { display: none; }
+    /* Drop the wordmark on phones — saves ~150px of a 360px screen.
+       Branding survives via the favicon and <title>. */
+    header h1 { display: none; }
+
+    #toolbar { flex-wrap: nowrap; overflow-x: auto; }
+    #toolbar > * { flex-shrink: 0; }
+    #promptBox { height: 52px; }
   }
 </style>
 </head>

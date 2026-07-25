@@ -1,4 +1,4 @@
-import { config } from "../config.js";
+import { config, maxTokensFor } from "../config.js";
 import { sseData, apiError } from "../lib/sse.js";
 import type { ProviderAdapter, ChatMessage } from "./types.js";
 
@@ -25,7 +25,7 @@ export const anthropic: ProviderAdapter = {
       },
       body: JSON.stringify({
         model: config.models.anthropic,
-        max_tokens: config.maxTokens,
+        max_tokens: maxTokensFor("anthropic"),
         stream: true,
         system: systemPrompt,
         messages,

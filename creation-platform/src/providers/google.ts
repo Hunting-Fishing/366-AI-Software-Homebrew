@@ -1,4 +1,4 @@
-import { config } from "../config.js";
+import { config, maxTokensFor } from "../config.js";
 import { sseData, apiError } from "../lib/sse.js";
 import type { ProviderAdapter, ChatMessage } from "./types.js";
 
@@ -30,7 +30,7 @@ export const google: ProviderAdapter = {
           role: m.role === "assistant" ? "model" : "user",
           parts: [{ text: m.content }],
         })),
-        generationConfig: { maxOutputTokens: config.maxTokens },
+        generationConfig: { maxOutputTokens: maxTokensFor("google") },
       }),
     });
     if (!res.ok) throw await apiError("Google", res);

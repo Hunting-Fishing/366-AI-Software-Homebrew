@@ -1,0 +1,51 @@
+# ─── Secrets ───────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── Dependencies ──────────────────────────────
+# NOTE: ai-app-builder/node_modules is ALREADY TRACKED (628 files).
+# .gitignore does not untrack files already committed. To fix:
+#   git rm -r --cached ai-app-builder/node_modules
+# See docs/step-01-foundations.md §1.6.1
+node_modules/
+.pnp
+.pnp.js
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ─── Build output ──────────────────────────────
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# ─── Supabase local ────────────────────────────
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# ─── Tooling caches ────────────────────────────
+.turbo/
+.vercel/
+.cache/
+coverage/
+
+# ─── Editors / OS ──────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# ─── Logs ──────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── Repo import staging ───────────────────────
+_import/

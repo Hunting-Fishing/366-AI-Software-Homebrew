@@ -1,0 +1,62 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# WHY RENDER AND NOT CLOUDFLARE PAGES:
+# This is a long-running Node server that shells out to other programs.
+# src/services/runner.ts calls spawn("python3", ["app.py"]) and spawn("npx",
+# ["vite"]); src/services/studio.ts shells out to FFmpeg. Cloudflare
+# Workers (which is what Pages Functions run on) is a V8 isolate, not
+# Node — node:child_process is a non-functional stub there, so none of
+# that can work. Same reason Vercel serverless is a poor fit.
+#
+# Cloudflare still does the DNS. See docs/step-02-hosting.md.
+#
+# To use: Render dashboard → New → Blueprint → point at this repo.
+
+services:
+  - type: web
+    name: creation-platform
+    runtime: docker
+    # The platform lives in a subfolder of the monorepo.
+    rootDir: creation-platform
+    dockerfilePath: ./Dockerfile
+    plan: starter          # "free" sleeps after ~15 min idle
+    region: oregon
+    healthCheckPath: /
+    autoDeploy: true
+
+    disk:
+      # Generated video clips and assembled films. Projects themselves
+      # live in Supabase and do NOT need a disk.
+      name: media
+      mountPath: /app/media
+      sizeGB: 1
+
+    envVars:
+      # ── Required ────────────────────────────────────────────
+      # sync:false means "prompt me in the dashboard, never store in git".
+      - key: ACCESS_PASSWORD
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+
+      # ── Recommended ─────────────────────────────────────────
+      # Presence of this switches on per-user accounts instead of
+      # one shared team password.
+      - key: SUPABASE_ANON_KEY
+        sync: false
+
+      # ── Optional ────────────────────────────────────────────
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: NETLIFY_TOKEN
+        sync: false
+
+      # ── Safe to commit ──────────────────────────────────────
+      - key: NODE_ENV
+        value: production

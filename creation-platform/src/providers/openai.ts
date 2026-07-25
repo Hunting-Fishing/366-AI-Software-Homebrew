@@ -1,4 +1,4 @@
-import { config } from "../config.js";
+import { config, maxTokensFor } from "../config.js";
 import { sseData, apiError } from "../lib/sse.js";
 import type { ProviderAdapter, ChatMessage } from "./types.js";
 
@@ -22,7 +22,7 @@ export const openai: ProviderAdapter = {
       },
       body: JSON.stringify({
         model: config.models.openai,
-        max_tokens: config.maxTokens,
+        max_tokens: maxTokensFor("openai"),
         stream: true,
         messages: [{ role: "system", content: systemPrompt }, ...messages],
       }),
