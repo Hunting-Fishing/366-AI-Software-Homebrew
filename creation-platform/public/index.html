@@ -65,6 +65,15 @@
   #codeView { flex: 1; overflow: auto; margin: 0; padding: 16px; font: 12px/1.5 ui-monospace, Consolas, monospace; color: #c9d4ff; white-space: pre-wrap; overflow-wrap: anywhere; }
   #runHint { display: none; padding: 10px 14px; font-size: 13px; color: var(--good); background: #12241c; border-top: 1px solid var(--border); }
 
+  /* Booting overlay — the preview builds itself, so this is what the
+     user watches instead of pressing a button and hoping. */
+  #booting { flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: var(--bg); padding: 0 32px; }
+  #booting .phase { font-size: 14px; color: var(--text); text-align: center; }
+  #booting .sub { font-size: 12px; color: var(--muted); text-align: center; max-width: 380px; line-height: 1.5; }
+  #booting .track { width: 100%; max-width: 320px; height: 6px; background: var(--panel2); border-radius: 99px; overflow: hidden; }
+  #booting .bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width .4s ease; }
+  #booting .pct { font-size: 22px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
+
   #empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); background: var(--bg); }
   #empty .big { font-size: 40px; }
   #empty .ideas { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 0 30px; }
@@ -160,6 +169,12 @@
         <button onclick="useIdea('A 2D breakout game with levels and scores')">Breakout game</button>
         <button onclick="useIdea('An expense tracker with monthly charts')">Expense tracker</button>
       </div>
+    </div>
+    <div id="booting">
+      <div class="pct" id="bootPct">0%</div>
+      <div class="track"><div class="bar" id="bootBar"></div></div>
+      <div class="phase" id="bootPhase">Starting…</div>
+      <div class="sub" id="bootSub"></div>
     </div>
     <iframe id="preview" sandbox="allow-scripts" style="display:none"></iframe>
     <div id="codeWrap">
@@ -274,7 +289,8 @@ function isWeb(p) { return p && p.target === "web"; }
 function isVite(p) { return p && (p.target === "react" || p.target === "mobile"); }
 
 function showTab(which) {
-  $("preview").style.display = which === "preview" ? "" : "none";
+  $("preview").style.display = which === "preview" && !booting ? "" : "none";
+  $("booting").style.display = which === "preview" && booting ? "flex" : "none";
   $("codeWrap").style.display = which === "code" ? "flex" : "none";
 }
 
@@ -313,10 +329,12 @@ function renderProject() {
     renderFileTabs();
     const info = targetInfo(project.target);
     $("runHint").textContent = "▶ How to run: " + info.runInstructions + " ";
-    if (project.target === "python" || isVite(project)) {
+    if (canPreview(project)) {
+      // The preview starts on its own after each build. This is a
+      // manual restart for when you want a clean boot.
       const b = document.createElement("button");
-      b.textContent = "🌐 Run in browser";
-      b.onclick = runLivePreview;
+      b.textContent = "↻ Restart preview";
+      b.onclick = () => runLivePreview({ auto: true });
       $("runHint").appendChild(b);
     }
     if (project.target === "video" && imageProviders.some(p => p.configured)) {
@@ -441,8 +459,12 @@ async function send() {
       ? "✅ Updated! Anything else?"
       : (isWeb(project)
           ? "✅ Done! Tell me what to change, or save/download it."
-          : "✅ Done! " + project.files.length + " files generated. Check the Code tab, download the ZIP, and see the run instructions at the bottom.");
+          : "✅ Done! " + project.files.length + " files generated.");
     $("status").textContent = "";
+
+    // Boot the preview without being asked. Pressing a button to see
+    // what you just built is a step that should not exist.
+    if (canPreview(project)) runLivePreview({ auto: true });
   } catch (err) {
     thinking.remove();
     addMsg("err", "⚠️ " + err.message);
@@ -475,11 +497,44 @@ async function readJson(res) {
   }
 }
 
-async function runLivePreview() {
-  const note = addMsg("bot", "");
-  const spin = (t) => { note.innerHTML = '<span class="spinner"></span>' + t; };
-  spin("Starting…");
+/** Targets whose output can actually run in the preview pane. */
+function canPreview(p) {
+  return p && (isVite(p) || p.target === "python");
+}
+
+let booting = false;
+
+// There is no true progress signal — npm does not report a percentage,
+// and pretending otherwise would mean a bar that jumps to 90% and sits
+// there. So the bar eases toward a ceiling per phase and only reaches
+// 100% when the preview is genuinely up. It always moves, and it never
+// lies about being nearly done.
+function bootProgress(state, phaseElapsedMs) {
+  const ease = (base, span, tau) => base + span * (1 - Math.exp(-phaseElapsedMs / tau));
+  if (state === "installing") return ease(2, 68, 35000);   // → 70%
+  if (state === "starting") return ease(70, 25, 12000);    // → 95%
+  if (state === "ready") return 100;
+  return 2;
+}
+
+function showBoot(state, elapsedMs, phase, sub) {
+  booting = true;
+  const pct = Math.min(100, Math.round(bootProgress(state, elapsedMs)));
+  $("bootPct").textContent = pct + "%";
+  $("bootBar").style.width = pct + "%";
+  $("bootPhase").textContent = phase;
+  $("bootSub").textContent = sub || "";
+  showTab("preview");
+}
+
+async function runLivePreview(opts) {
+  const auto = opts && opts.auto;
+  const note = auto ? null : addMsg("bot", "");
+  let phaseState = null;
+  let phaseStart = Date.now();
+
   try {
+    showBoot("installing", 0, "Preparing your app…", "");
     const res = await fetch("/api/preview", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -488,28 +543,48 @@ async function runLivePreview() {
     const started = await readJson(res);
     if (!res.ok && res.status !== 202) throw new Error(started.error || "Preview failed");
 
-    // The server is working in the background. Poll rather than holding
-    // a request open — see src/routes/preview.ts for why that matters.
+    // The server works in the background; poll rather than holding a
+    // request open. See src/routes/preview.ts for why that matters.
     const deadline = Date.now() + 5 * 60 * 1000;
     let data = started;
     while (data.state !== "ready" && data.state !== "error") {
       if (Date.now() > deadline) throw new Error("Gave up waiting after 5 minutes.");
-      await new Promise((r) => setTimeout(r, 1500));
+      if (data.state !== phaseState) { phaseState = data.state; phaseStart = Date.now(); }
       const secs = Math.round((data.elapsedMs || 0) / 1000);
-      spin((data.message || "Working") + (secs > 3 ? " — " + secs + "s" : "") + "…");
+      showBoot(
+        data.state,
+        Date.now() - phaseStart,
+        data.state === "installing" ? "Installing packages" : "Starting the dev server",
+        (data.message || "") + (secs > 3 ? "  ·  " + secs + "s elapsed" : "")
+      );
+      await new Promise((r) => setTimeout(r, 1200));
       data = await readJson(await fetch("/api/preview"));
     }
     if (data.state === "error") throw new Error(data.message || "Preview failed to start");
+
+    showBoot("ready", 0, "Ready", "");
+    await new Promise((r) => setTimeout(r, 250)); // let 100% register
 
     const iframe = $("preview");
     iframe.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin");
     iframe.removeAttribute("srcdoc");
     iframe.src = data.url + "?t=" + Date.now();
+    booting = false;
     showTab("preview");
-    note.textContent = "🌐 Running live in the preview. It stops when you build something new.";
+    if (note) note.textContent = "🌐 Running live in the preview.";
   } catch (err) {
-    note.textContent = "⚠️ " + err.message;
-    note.className = "msg err";
+    booting = false;
+    showTab("code");
+    if (note) note.remove();
+    const m = addMsg("err", "⚠️ Preview failed: " + err.message);
+    // Offer a retry inline — a transient npm or network failure should
+    // not mean regenerating the whole project.
+    const retry = document.createElement("button");
+    retry.textContent = "↻ Try again";
+    retry.style.marginTop = "8px";
+    retry.onclick = () => { m.remove(); runLivePreview({ auto: true }); };
+    m.appendChild(document.createElement("br"));
+    m.appendChild(retry);
   }
 }
 

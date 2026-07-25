@@ -74,7 +74,7 @@ ${MULTI_FILE_FORMAT}`,
     mode: "multi-file",
     fallbackFile: "app.py",
     runInstructions:
-      "Click 'Run in browser' for an instant live preview (needs Python + 'pip install flask' on this machine, one time). Or download the ZIP:  pip install -r requirements.txt  →  python app.py  →  open http://localhost:5000.",
+      "The preview starts by itself after each build (needs Python + 'pip install flask' on the machine running this, one time). Download the ZIP to run it yourself:  pip install -r requirements.txt  →  python app.py  →  open http://localhost:5000.",
     systemPrompt: `You are an expert Python developer inside an AI app-builder product.
 
 RULES — follow every one:
@@ -93,7 +93,7 @@ ${MULTI_FILE_FORMAT}`,
     mode: "multi-file",
     fallbackFile: "src/App.jsx",
     runInstructions:
-      "Click 'Run in browser' for a live preview (first run installs packages, ~1 minute). Or download the ZIP:  npm install  →  npm run dev.  Deploy with  npm run build.",
+      "The preview starts by itself after each build (first one installs packages, ~1 minute). Download the ZIP for a standard project:  npm install  →  npm run dev.  Deploy with  npm run build.",
     systemPrompt: `You are an expert React developer inside an AI app-builder product.
 
 RULES — follow every one:
@@ -116,7 +116,7 @@ ${MULTI_FILE_FORMAT}`,
     mode: "multi-file",
     fallbackFile: "src/App.jsx",
     runInstructions:
-      "Click 'Run in browser' for a live preview — it is the real app. To put it on a phone, download the ZIP then:  npm install  →  npm run build  →  npx cap add android  →  npx cap open android.  Building the native package needs Android Studio (or Xcode for iOS) on your own machine — nothing extra on this server.",
+      "The preview starts by itself — it is the real app. To put it on a phone, download the ZIP then:  npm install  →  npm run build  →  npx cap add android  →  npx cap open android.  Building the native package needs Android Studio (or Xcode for iOS) on your own machine — nothing extra on this server.",
     systemPrompt: `You are an expert mobile app developer inside an AI app-builder product.
 
 You build mobile apps as Vite + React projects wrapped with Capacitor. The web build IS the app — Capacitor packages it into a native Android/iOS shell.

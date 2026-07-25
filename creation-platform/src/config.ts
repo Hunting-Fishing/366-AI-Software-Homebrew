@@ -13,7 +13,11 @@ export const config = {
   port: envInt("PORT", 3000),
 
   models: {
-    anthropic: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5",
+    // Claude Sonnet 5, released 30 June 2026, is what Lovable itself
+    // runs on. Same model, so the generation quality ceiling is the
+    // same — the difference between us and them is the platform around
+    // it, not the intelligence inside it.
+    anthropic: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
     openai: process.env.OPENAI_MODEL || "gpt-4.1",
     google: process.env.GOOGLE_MODEL || "gemini-2.5-pro",
   },
