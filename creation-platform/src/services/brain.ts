@@ -14,6 +14,7 @@
 // their build.
 
 import { streamGenerate, type ChatMessage } from "../providers/index.js";
+import { resolve, type Role, type Routing } from "../models.js";
 import { extractJsonArray } from "../lib/extract.js";
 
 export interface BrainTask {
@@ -59,11 +60,17 @@ export function phaseProgress(p: BrainPhase): number {
 async function complete(
   provider: string,
   system: string,
-  user: string
+  user: string,
+  role: Role,
+  routing: Routing = {}
 ): Promise<string> {
   const messages: ChatMessage[] = [{ role: "user", content: user }];
   let out = "";
-  for await (const chunk of streamGenerate(provider, system, messages)) out += chunk;
+  // Planning and suggesting are short structured replies over a short
+  // prompt. They run while the user is waiting, so speed beats depth —
+  // and a mediocre suggestion costs nothing, because nobody clicks it.
+  const routed = resolve(role, provider, routing);
+  for await (const chunk of streamGenerate(routed.provider, system, messages, routed.model)) out += chunk;
   return out;
 }
 
@@ -93,8 +100,8 @@ Respond with ONLY this JSON, no prose, no fences:
 {"goal":"one sentence","phases":[{"name":"Phase name","goal":"one sentence","tasks":["task","task"]}]}`;
 
 /** Draft a plan from the user's first prompt. */
-export async function planPhases(provider: string, idea: string): Promise<Brain> {
-  const raw = await complete(provider, PLANNER_SYSTEM, "App idea: " + idea);
+export async function planPhases(provider: string, idea: string, routing: Routing = {}): Promise<Brain> {
+  const raw = await complete(provider, PLANNER_SYSTEM, "App idea: " + idea, "plan", routing);
   const parsed = extractJsonObject(raw) as {
     goal?: string;
     phases?: Array<{ name?: string; goal?: string; tasks?: string[] }>;
@@ -151,7 +158,8 @@ export async function advance(
   provider: string,
   brain: Brain,
   justBuilt: string,
-  fileList: string[]
+  fileList: string[],
+  routing: Routing = {}
 ): Promise<AdvanceResult> {
   const active = brain.phases.find((p) => p.id === brain.currentPhase);
   if (!active) return { brain, suggestions: [] };
@@ -170,7 +178,7 @@ export async function advance(
 
   let parsed: { completedTasks?: string[]; phaseComplete?: boolean; suggestions?: string[] };
   try {
-    parsed = extractJsonObject(await complete(provider, ADVANCE_SYSTEM, user)) as typeof parsed;
+    parsed = extractJsonObject(await complete(provider, ADVANCE_SYSTEM, user, "suggest", routing)) as typeof parsed;
   } catch {
     return { brain, suggestions: [] };
   }

@@ -12,19 +12,22 @@
 
 import { Router, type Request, type Response } from "express";
 import { runLane, modeOf, selectLane } from "../lanes/index.js";
+import { sanitiseRouting } from "../models.js";
 import type { WireEvent } from "../lanes/index.js";
 import type { ProjectFile } from "../lib/files.js";
 
 export const generateRouter = Router();
 
 generateRouter.post("/api/generate", async (req: Request, res: Response) => {
-  const { provider, prompt, target: targetId, currentCode, currentFiles } =
+  const { provider, prompt, target: targetId, currentCode, currentFiles, routing } =
     req.body as {
       provider?: string;
       prompt?: string;
       target?: string;
       currentCode?: string;
       currentFiles?: ProjectFile[];
+      /** Per-role model overrides — see src/models.ts. */
+      routing?: unknown;
     };
 
   if (!provider || !prompt) {
@@ -44,6 +47,9 @@ generateRouter.post("/api/generate", async (req: Request, res: Response) => {
     provider,
     files: currentFiles ?? [],
     code: currentCode,
+    // Sanitised, never trusted: the browser could name any string as a
+    // model, and an unvetted one would be sent straight to a provider.
+    routing: sanitiseRouting(routing),
   };
 
   try {

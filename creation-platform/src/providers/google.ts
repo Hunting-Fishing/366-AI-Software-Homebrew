@@ -16,10 +16,10 @@ export const google: ProviderAdapter = {
   label: "Gemini (Google)",
   keyEnv: "GOOGLE_API_KEY",
 
-  async *stream(systemPrompt: string, messages: ChatMessage[]) {
+  async *stream(systemPrompt: string, messages: ChatMessage[], model?: string) {
     const url =
       `https://generativelanguage.googleapis.com/v1beta/models/` +
-      `${config.models.google}:streamGenerateContent?alt=sse&key=${process.env.GOOGLE_API_KEY ?? ""}`;
+      `${model || config.models.google}:streamGenerateContent?alt=sse&key=${process.env.GOOGLE_API_KEY ?? ""}`;
 
     const res = await fetch(url, {
       method: "POST",

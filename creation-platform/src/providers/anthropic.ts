@@ -15,7 +15,7 @@ export const anthropic: ProviderAdapter = {
   label: "Claude (Anthropic)",
   keyEnv: "ANTHROPIC_API_KEY",
 
-  async *stream(systemPrompt: string, messages: ChatMessage[]) {
+  async *stream(systemPrompt: string, messages: ChatMessage[], model?: string) {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -24,7 +24,7 @@ export const anthropic: ProviderAdapter = {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: config.models.anthropic,
+        model: model || config.models.anthropic,
         max_tokens: maxTokensFor("anthropic"),
         stream: true,
         system: systemPrompt,

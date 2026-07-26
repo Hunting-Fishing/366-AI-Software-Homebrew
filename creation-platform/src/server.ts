@@ -23,6 +23,7 @@ import { availableVideoProviders } from "./providers/videos.js";
 import { FAILURES } from "./failures.js";
 import { integrationsRouter } from "./routes/integrations.js";
 import { canExecute } from "./services/sandbox.js";
+import { ROLES, TIERS, MODELS } from "./models.js";
 import { CONNECTORS, CATEGORIES } from "./connectors.js";
 import { projectHealth, refactorPrompt, FILE_LIMIT, FILE_COMFORTABLE, FN_COMFORTABLE } from "./codeHealth.js";
 import type { ProjectFile } from "./lib/files.js";
@@ -75,6 +76,11 @@ app.get("/api/health", (_req, res) => {
     // So the UI can say WHY a Python preview will not start, before
     // someone waits for a build to find out.
     execution: canExecute(),
+    // Which model does which job. The defaults, before any override
+    // the browser holds — see src/models.ts.
+    roles: ROLES,
+    tiers: TIERS,
+    models: MODELS,
   });
 });
 

@@ -12,14 +12,18 @@ function envInt(name: string, fallback: number): number {
 export const config = {
   port: envInt("PORT", 3000),
 
+  // The fallback model per provider, used when nothing supplies a
+  // per-role choice. src/models.ts is where the real decision lives —
+  // these are the "balanced" tier of each provider, so behaviour with
+  // no routing configured is sensible rather than accidental.
+  //
+  // Two of these were stale (gpt-4.1, gemini-2.5-pro) and had been
+  // superseded twice over. Verified against provider documentation,
+  // July 2026.
   models: {
-    // Claude Sonnet 5, released 30 June 2026, is what Lovable itself
-    // runs on. Same model, so the generation quality ceiling is the
-    // same — the difference between us and them is the platform around
-    // it, not the intelligence inside it.
     anthropic: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
-    openai: process.env.OPENAI_MODEL || "gpt-4.1",
-    google: process.env.GOOGLE_MODEL || "gemini-2.5-pro",
+    openai: process.env.OPENAI_MODEL || "gpt-5.6-terra",
+    google: process.env.GOOGLE_MODEL || "gemini-3.5-flash",
   },
 
   // ── Output ceilings, per provider ────────────────────────────

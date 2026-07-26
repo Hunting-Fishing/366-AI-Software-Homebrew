@@ -37,6 +37,11 @@ export interface LaneRequest {
    * starting cold every time.
    */
   projectId?: string;
+  /**
+   * Which model does which job, when the user has overridden the
+   * defaults. Empty means "use the defaults" — see src/models.ts.
+   */
+  routing?: import("../models.js").Routing;
 }
 
 // ── Wire events ──────────────────────────────────────────────

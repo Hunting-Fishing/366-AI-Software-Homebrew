@@ -731,6 +731,17 @@
   </div>
 </div>
 
+<!-- Which model does which job. -->
+<div id="mdlScrim" class="modalScrim"></div>
+<div id="mdlPanel" class="modal" role="dialog" aria-modal="true" aria-labelledby="mdlTitle">
+  <div class="modalHead">
+    <span data-icon="sparkles"></span>
+    <h2 id="mdlTitle">Models</h2>
+    <button class="x" id="mdlClose" aria-label="Close"></button>
+  </div>
+  <div class="modalBody" id="mdlBody"></div>
+</div>
+
 <!-- Project menu. Opened from the brand button, top left. -->
 <div id="scrim"></div>
 <div class="menu" id="projMenu" role="menu" aria-labelledby="brandBtn">
@@ -741,6 +752,7 @@
   <button class="item" id="mPublish" role="menuitem"><span data-icon="rocket"></span>Publish to the web</button>
   <div class="sep"></div>
   <button class="item" id="mIntegrations" role="menuitem"><span data-icon="plug"></span>Integrations<span class="hint" id="mIntCount"></span></button>
+  <button class="item" id="mModels" role="menuitem"><span data-icon="sparkles"></span>Models<span class="hint">per job</span></button>
   <button class="item" id="mNew" role="menuitem"><span data-icon="plus"></span>New project</button>
   <div class="sep"></div>
   <div class="sec">Appearance</div>
@@ -961,6 +973,9 @@ async function init() {
   targetsInfo = health.targets;
   imageProviders = health.imageProviders || [];
   healthInfo = health;
+  roleSpecs = health.roles || [];
+  tierSpecs = health.tiers || [];
+  modelTable = health.models || {};
 
   const tSel = $("targetSel");
   tSel.innerHTML = "";
@@ -1317,7 +1332,7 @@ async function send() {
     if (targetId === "book" && !project) {
       finalPrompt = promptText + "\n\n" + (BOOK_TYPES[$("bookSel").value] || BOOK_TYPES.picture);
     }
-    const body = { provider: $("providerSel").value, prompt: finalPrompt, target: targetId };
+    const body = { provider: $("providerSel").value, prompt: finalPrompt, target: targetId, routing };
     if (project && isWeb(project)) body.currentCode = project.code;
     if (project && !isWeb(project)) body.currentFiles = project.files;
 
@@ -1593,7 +1608,7 @@ async function planBrain(idea) {
     const r = await fetch("/api/brain/plan", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ provider: $("providerSel").value, idea }),
+      body: JSON.stringify({ provider: $("providerSel").value, idea, routing }),
     });
     if (!r.ok) return;
     brain = await readJson(r);
@@ -1623,6 +1638,7 @@ async function advanceBrain(justBuilt) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         provider: $("providerSel").value,
+        routing,
         brain,
         justBuilt,
         files: (project.files || []).map(f => ({ path: f.path })),
@@ -3044,6 +3060,135 @@ function renderHealthBar() {
   };
   bar.appendChild(go);
 }
+
+
+// ── Model routing ───────────────────────────────────────────
+// One model for everything is the wrong shape. Splitting a 700-line
+// file without breaking a database key is deep multi-file reasoning;
+// drafting five one-line suggestions is a paragraph. Paying frontier
+// prices for the second is waste, and using a cheap model for the
+// first is how projects break.
+//
+// So each JOB has its own model, with sensible defaults and a full
+// override. The table lives in localStorage and rides along with
+// every request — the server sanitises it, because an unvetted model
+// name from the browser would go straight to a provider.
+
+const ROUTING_KEY = "cp.routing";
+let routing = {};
+let roleSpecs = [], tierSpecs = [], modelTable = {};
+
+try { routing = JSON.parse(localStorage.getItem(ROUTING_KEY) || "{}") || {}; } catch { routing = {}; }
+
+function saveRouting() {
+  localStorage.setItem(ROUTING_KEY, JSON.stringify(routing));
+}
+
+function modelFor(role, spec) {
+  const choice = routing[role] || {};
+  const provider = choice.provider || $("providerSel").value;
+  const tier = choice.tier || spec.defaultTier;
+  const table = modelTable[provider] || {};
+  return { provider, tier, model: table[tier] || "" };
+}
+
+function openModels() {
+  closeMenu();
+  $("mdlScrim").classList.add("open");
+  $("mdlPanel").classList.add("open");
+  renderModels();
+}
+function closeModels() {
+  $("mdlScrim").classList.remove("open");
+  $("mdlPanel").classList.remove("open");
+}
+
+function renderModels() {
+  const body = $("mdlBody");
+  body.innerHTML = "";
+
+  const note = document.createElement("div");
+  note.className = "note";
+  note.innerHTML = icon("shield", "sm") +
+    "<div>Defaults are chosen per job, not per project. Change one only if you " +
+    "have a reason — the reasoning behind each is written below it.</div>";
+  body.appendChild(note);
+
+  const configured = new Set(
+    (healthInfo.providers || []).filter((p) => p.configured).map((p) => p.id)
+  );
+
+  for (const spec of roleSpecs) {
+    const cur = modelFor(spec.id, spec);
+    const card = document.createElement("div");
+    card.className = "intCard";
+    card.innerHTML =
+      '<div class="h"><span class="nm"></span><span class="st"></span></div>' +
+      '<div class="d what"></div><div class="d why"></div>';
+    card.querySelector(".nm").textContent = spec.label;
+    const st = card.querySelector(".st");
+    st.textContent = cur.model || "not configured";
+    st.classList.toggle("on", Boolean(cur.model) && configured.has(cur.provider));
+    card.querySelector(".what").textContent = spec.what;
+    const why = card.querySelector(".why");
+    why.textContent = "Why this tier: " + spec.why;
+    why.style.opacity = ".85";
+
+    const row = document.createElement("div");
+    row.className = "acts";
+
+    const pSel = document.createElement("select");
+    for (const p of (healthInfo.providers || [])) {
+      const o = document.createElement("option");
+      o.value = p.id;
+      o.textContent = (p.configured ? "" : "\u25cb ") + p.label;
+      o.disabled = !p.configured;
+      pSel.appendChild(o);
+    }
+    pSel.value = cur.provider;
+    pSel.onchange = () => {
+      routing[spec.id] = { ...(routing[spec.id] || {}), provider: pSel.value };
+      saveRouting();
+      renderModels();
+    };
+
+    const tSel = document.createElement("select");
+    for (const t of tierSpecs) {
+      const o = document.createElement("option");
+      o.value = t.id;
+      o.textContent = t.label + (t.id === spec.defaultTier ? " (default)" : "");
+      o.title = t.blurb;
+      tSel.appendChild(o);
+    }
+    tSel.value = cur.tier;
+    tSel.onchange = () => {
+      routing[spec.id] = { ...(routing[spec.id] || {}), tier: tSel.value };
+      saveRouting();
+      renderModels();
+    };
+
+    row.appendChild(pSel);
+    row.appendChild(tSel);
+
+    if (routing[spec.id]) {
+      const reset = document.createElement("button");
+      setBtn(reset, "rotate-cw", "Default");
+      reset.onclick = () => { delete routing[spec.id]; saveRouting(); renderModels(); };
+      row.appendChild(reset);
+    }
+    card.appendChild(row);
+    body.appendChild(card);
+  }
+
+  const all = document.createElement("button");
+  setBtn(all, "rotate-cw", "Reset everything to defaults");
+  all.onclick = () => { routing = {}; saveRouting(); renderModels(); };
+  body.appendChild(all);
+}
+
+$("mModels").onclick = openModels;
+$("mdlClose").onclick = closeModels;
+$("mdlScrim").onclick = closeModels;
 
 
 // ── Connectors ──────────────────────────────────────────────

@@ -9,26 +9,28 @@
 // is also why every failure here degrades to "no suggestions" rather
 // than an error the user has to read.
 
+import { sanitiseRouting } from "../models.js";
 import { Router, type Request, type Response } from "express";
 import { planPhases, advance, isBrain, emptyBrain, type Brain } from "../services/brain.js";
 
 export const brainRouter = Router();
 
 brainRouter.post("/api/brain/plan", async (req: Request, res: Response) => {
-  const { provider, idea } = req.body as { provider?: string; idea?: string };
+  const { provider, idea, routing } = req.body as { provider?: string; idea?: string; routing?: unknown };
   if (!provider || !idea) {
     res.status(400).json({ error: "provider and idea are required" });
     return;
   }
   try {
-    res.json(await planPhases(provider, idea));
+    res.json(await planPhases(provider, idea, sanitiseRouting(routing)));
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
 brainRouter.post("/api/brain/advance", async (req: Request, res: Response) => {
-  const { provider, brain, justBuilt, files } = req.body as {
+  const { provider, brain, justBuilt, files, routing } = req.body as {
+    routing?: unknown;
     provider?: string;
     brain?: unknown;
     justBuilt?: string;
@@ -52,7 +54,8 @@ brainRouter.post("/api/brain/advance", async (req: Request, res: Response) => {
         provider,
         current,
         justBuilt ?? "",
-        (files ?? []).map((f) => f.path)
+        (files ?? []).map((f) => f.path),
+        sanitiseRouting(routing)
       )
     );
   } catch {

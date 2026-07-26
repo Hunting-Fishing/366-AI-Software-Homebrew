@@ -21,6 +21,7 @@ import { extractHtml } from "../lib/extract.js";
 import { parseFiles, parseDeletions, applyEdit, serializeFiles, type ProjectFile } from "../lib/files.js";
 import { checkProject, type CheckResult } from "../lib/check.js";
 import { extractContracts, contractDiff, contractBrief } from "../services/contracts.js";
+import { resolve, type Role } from "../models.js";
 import type { AgentEvent, AgentLane, LaneRequest } from "./types.js";
 
 /**
@@ -76,18 +77,30 @@ export const inhouseLane: AgentLane = {
     const messages = buildMessages(req.prompt, req.code, req.files);
 
     // Stream one model call, relaying chunks; returns the full text.
+    //
+    // The ROLE decides how much model this is worth. A first build and
+    // a five-word suggestion are not the same job, and paying frontier
+    // prices for the second is waste — see src/models.ts.
     async function* runStream(
-      msgs: ChatMessage[]
+      msgs: ChatMessage[],
+      role: Role
     ): AsyncGenerator<AgentEvent, string> {
+      const { provider, model } = resolve(role, req.provider, req.routing);
       let full = "";
-      for await (const text of streamGenerate(req.provider, target.systemPrompt, msgs)) {
+      for await (const text of streamGenerate(provider, target.systemPrompt, msgs, model)) {
         full += text;
         yield { type: "chunk", text };
       }
       return full;
     }
 
-    const full = yield* runStream(messages);
+    // A refactor is the highest-risk edit there is, so it is routed
+    // separately from an ordinary change even though both are edits.
+    const isRefactor = /\bsplit\b|\brefactor\b/i.test(req.prompt);
+    const buildRole: Role =
+      (req.files ?? []).length === 0 ? "create" : isRefactor ? "refactor" : "edit";
+
+    const full = yield* runStream(messages, buildRole);
 
     if (target.mode === "single-html") {
       yield { type: "done", target: target.id, code: extractHtml(full) };
@@ -145,7 +158,7 @@ export const inhouseLane: AgentLane = {
             check.errors,
         },
       ];
-      const fixed = yield* runStream(fixMessages);
+      const fixed = yield* runStream(fixMessages, "fix");
       // The correction is a patch onto the attempt we just made, not a
       // replacement for it. This is what makes Fix work on a large
       // project: the model sends the two files that matter, and the

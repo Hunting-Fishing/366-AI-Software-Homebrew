@@ -11,10 +11,17 @@ export interface ProviderAdapter {
   id: string;
   label: string;
   keyEnv: string; // which .env variable holds the API key
-  /** Stream the model's reply as text chunks. */
+  /**
+   * Stream the model's reply as text chunks.
+   *
+   * `model` overrides the provider's default. It exists so one
+   * provider can serve several tiers — see src/models.ts, where the
+   * job decides how much model it is worth.
+   */
   stream(
     systemPrompt: string,
-    messages: ChatMessage[]
+    messages: ChatMessage[],
+    model?: string
   ): AsyncGenerator<string>;
 }
 

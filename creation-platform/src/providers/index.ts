@@ -28,7 +28,9 @@ export function availableProviders(): ProviderInfo[] {
 export function streamGenerate(
   providerId: string,
   systemPrompt: string,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  /** Overrides the provider default — see src/models.ts. */
+  model?: string
 ): AsyncGenerator<string> {
   const provider = registry[providerId];
   if (!provider) throw new Error(`Unknown provider: ${providerId}`);
@@ -37,7 +39,7 @@ export function streamGenerate(
       `No API key set for ${provider.label}. Add ${provider.keyEnv} to your .env file and restart.`
     );
   }
-  return provider.stream(systemPrompt, messages);
+  return provider.stream(systemPrompt, messages, model);
 }
 
 export type { ChatMessage };

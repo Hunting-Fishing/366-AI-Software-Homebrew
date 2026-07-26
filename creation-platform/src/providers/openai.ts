@@ -13,7 +13,7 @@ export const openai: ProviderAdapter = {
   label: "ChatGPT (OpenAI)",
   keyEnv: "OPENAI_API_KEY",
 
-  async *stream(systemPrompt: string, messages: ChatMessage[]) {
+  async *stream(systemPrompt: string, messages: ChatMessage[], model?: string) {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -21,7 +21,7 @@ export const openai: ProviderAdapter = {
         authorization: `Bearer ${process.env.OPENAI_API_KEY ?? ""}`,
       },
       body: JSON.stringify({
-        model: config.models.openai,
+        model: model || config.models.openai,
         max_tokens: maxTokensFor("openai"),
         stream: true,
         messages: [{ role: "system", content: systemPrompt }, ...messages],
