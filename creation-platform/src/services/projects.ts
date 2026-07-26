@@ -34,6 +34,8 @@ export interface Project {
   files: ProjectFile[];
   /** Generated binary assets (e.g. game art PNGs), base64. */
   binaries: Binary[];
+  /** Phase plan — see services/brain.ts. {} until one is drafted. */
+  brain: Record<string, unknown>;
   savedAt: string;
 }
 
@@ -51,6 +53,7 @@ export interface ProjectPatch {
   code?: string;
   files?: ProjectFile[];
   binaries?: Binary[];
+  brain?: Record<string, unknown>;
   /** Shown in the history list. Defaults to the prompt that produced it. */
   label?: string;
 }
@@ -101,6 +104,7 @@ export function applyPatch(current: Project, patch: ProjectPatch): Project {
     code: patch.code ?? current.code,
     files: patch.files ?? current.files,
     binaries: patch.binaries ?? current.binaries,
+    brain: patch.brain ?? current.brain,
     savedAt: new Date().toISOString(),
   };
 }
@@ -174,6 +178,7 @@ export class JsonProjectStore implements ProjectStore {
       code,
       files,
       binaries,
+      brain: {},
       savedAt: new Date().toISOString(),
     };
     fs.writeFileSync(this.file(id), JSON.stringify(project, null, 2));
@@ -197,7 +202,9 @@ export class JsonProjectStore implements ProjectStore {
   async get(id: string, _userId?: string): Promise<Project | null> {
     const f = this.file(id);
     if (!fs.existsSync(f)) return null;
-    return JSON.parse(fs.readFileSync(f, "utf8")) as Project;
+    const p = JSON.parse(fs.readFileSync(f, "utf8")) as Project;
+    // Projects saved before the brain existed have no such field.
+    return { ...p, brain: p.brain ?? {} };
   }
 
   async update(id: string, patch: ProjectPatch, _userId?: string): Promise<Project | null> {

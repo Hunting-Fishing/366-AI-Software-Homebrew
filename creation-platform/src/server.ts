@@ -13,6 +13,7 @@ import { listTargets } from "./targets.js";
 import { JsonProjectStore } from "./services/projects.js";
 import { SupabaseProjectStore, supabaseConfigured } from "./services/supabase.js";
 import { generateRouter } from "./routes/generate.js";
+import { brainRouter } from "./routes/brain.js";
 import { projectsRouter } from "./routes/projects.js";
 import { previewRouter } from "./routes/preview.js";
 import { imageRouter } from "./routes/image.js";
@@ -68,6 +69,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use(generateRouter);
+app.use(brainRouter);
 app.use(projectsRouter(store));
 app.use(previewRouter);
 app.use(imageRouter);

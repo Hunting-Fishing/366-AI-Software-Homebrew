@@ -112,7 +112,7 @@ test("a corrupt history file does not make the project unreadable", async () => 
 test("omitted patch fields are kept, not blanked", () => {
   const current: Project = {
     id: "x", name: "My App", prompt: "first", target: "react",
-    code: "", files: FILES, binaries: [{ path: "a.png", b64: "AA" }],
+    code: "", files: FILES, binaries: [{ path: "a.png", b64: "AA" }], brain: {},
     savedAt: "2026-01-01T00:00:00.000Z",
   };
   const next = applyPatch(current, { prompt: "second" });

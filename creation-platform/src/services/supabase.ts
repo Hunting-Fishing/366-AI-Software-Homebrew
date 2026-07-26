@@ -28,6 +28,7 @@ interface Row {
   code: string;
   files: ProjectFile[];
   binaries: Array<{ path: string; b64: string }>;
+  brain: Record<string, unknown>;
   saved_at: string;
   /** Owner account (accounts mode); null for rows saved before Phase 3.3. */
   user_id?: string | null;
@@ -42,6 +43,7 @@ interface VersionRow {
   code: string;
   files: ProjectFile[];
   binaries: Binary[];
+  brain: Record<string, unknown>;
   created_at: string;
 }
 
@@ -88,6 +90,7 @@ export class SupabaseProjectStore implements ProjectStore {
     const id = makeProjectId(name);
     const row: Row = {
       id, name, prompt, target, code, files, binaries,
+      brain: {},
       saved_at: new Date().toISOString(),
       user_id: userId ?? null,
     };
@@ -99,7 +102,7 @@ export class SupabaseProjectStore implements ProjectStore {
     if (!res.ok) await this.fail("save", res);
 
     const project: Project = {
-      id, name, prompt, target, code, files, binaries, savedAt: row.saved_at,
+      id, name, prompt, target, code, files, binaries, brain: {}, savedAt: row.saved_at,
     };
     // Version 1. Best effort: a project that saved but failed to record
     // its history is still a saved project, and losing the save because
@@ -140,6 +143,7 @@ export class SupabaseProjectStore implements ProjectStore {
     return {
       id: r.id, name: r.name, prompt: r.prompt, target: r.target,
       code: r.code, files: r.files ?? [], binaries: r.binaries ?? [],
+      brain: r.brain ?? {},
       savedAt: r.saved_at,
     };
   }
@@ -176,6 +180,7 @@ export class SupabaseProjectStore implements ProjectStore {
         code: project.code,
         files: project.files,
         binaries: project.binaries,
+        brain: project.brain,
         user_id: userId ?? null,
         created_at: project.savedAt,
       }),
@@ -204,6 +209,7 @@ export class SupabaseProjectStore implements ProjectStore {
           code: next.code,
           files: next.files,
           binaries: next.binaries,
+          brain: next.brain,
           saved_at: next.savedAt,
         }),
       }
@@ -260,6 +266,7 @@ export class SupabaseProjectStore implements ProjectStore {
       code: r.code,
       files: r.files ?? [],
       binaries: r.binaries ?? [],
+      brain: r.brain ?? {},
       savedAt: r.created_at,
     };
   }

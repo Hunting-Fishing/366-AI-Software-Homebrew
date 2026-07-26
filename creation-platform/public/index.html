@@ -40,6 +40,34 @@
   .msg.bot  { background: var(--panel2); border: 1px solid var(--border); align-self: flex-start; }
   .msg.err  { background: #3a1d24; border: 1px solid #6e2a3a; color: #ff9db0; align-self: flex-start; }
 
+  /* ── Brain: the phase plan ──────────────────────────────
+     A generated app is never done in one prompt. This is the plan,
+     kept beside the chat so the next step is always visible. */
+  #brain { border-top: 1px solid var(--border); background: var(--panel2); max-height: 42%; overflow-y: auto; display: none; }
+  #brainHead { display: flex; align-items: center; gap: 8px; padding: 10px 12px; position: sticky; top: 0; background: var(--panel2); cursor: pointer; }
+  #brainHead .t { font-size: 12px; font-weight: 500; letter-spacing: .02em; color: var(--muted); flex: 1; }
+  #brainHead .chev { color: var(--muted); font-size: 11px; }
+  #brainBody { padding: 0 12px 12px; }
+  .phase { border-left: 2px solid var(--border); padding: 6px 0 6px 10px; margin-bottom: 10px; }
+  .phase.active { border-left-color: var(--accent); }
+  .phase.done { opacity: .55; }
+  .phase .ph { display: flex; align-items: baseline; gap: 6px; }
+  .phase .nm { font-size: 13px; font-weight: 500; color: var(--text); }
+  .phase .pill { font-size: 10px; padding: 1px 6px; border-radius: 99px; background: var(--accent); color: #fff; }
+  .phase .goal { font-size: 11px; color: var(--muted); margin: 2px 0 6px; line-height: 1.45; }
+  .phase ul { list-style: none; margin: 0; padding: 0; }
+  .phase li { font-size: 12px; color: var(--muted); display: flex; gap: 7px; align-items: flex-start; padding: 2px 0; line-height: 1.45; }
+  .phase li.done { text-decoration: line-through; opacity: .6; }
+  .phase li .bx { flex: 0 0 auto; margin-top: 1px; }
+
+  /* Suggested next prompts — one click continues the build. */
+  #suggest { padding: 10px 12px; border-top: 1px solid var(--border); display: none; }
+  #suggest .lbl { font-size: 11px; color: var(--muted); margin-bottom: 7px; }
+  #suggest .chip { display: block; width: 100%; text-align: left; font-size: 12.5px; line-height: 1.45;
+    background: var(--panel2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; margin-bottom: 6px; color: var(--text); cursor: pointer; }
+  #suggest .chip:hover { border-color: var(--accent); }
+
   #inputRow { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
   #promptBox { flex: 1; resize: none; height: 64px; font: inherit; font-size: 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px; }
   #promptBox:focus { outline: 2px solid var(--ring); }
@@ -157,6 +185,16 @@
   <div id="left">
     <div id="chat">
       <div class="msg bot">Hi! Pick a language target (Web = instant preview, Flutter = native mobile, Python = Flask), describe what you want, and watch the code get written live. Then tell me what to change.</div>
+    </div>
+    <div id="brain">
+      <div id="brainHead"><span class="t">🧠 BUILD PLAN</span><span class="chev" id="brainChev">▾</span>
+        <button id="addPhaseBtn" title="Add a phase" style="font-size:11px;padding:3px 8px">+ Phase</button>
+      </div>
+      <div id="brainBody"></div>
+    </div>
+    <div id="suggest">
+      <div class="lbl">Next steps for this phase</div>
+      <div id="suggestList"></div>
     </div>
     <div id="inputRow">
       <textarea id="promptBox" placeholder="e.g. A workout tracker with a weekly calendar and progress charts"></textarea>
@@ -329,6 +367,7 @@ async function autoSave() {
     code: project.code,
     files: project.files,
     binaries: project.binaries || [],
+    brain: brain || {},
   };
   try {
     if (currentProjectId) {
@@ -555,6 +594,15 @@ async function send() {
     // should not exist.
     autoSave();
     if (canPreview(project)) runLivePreview({ auto: true });
+
+    // The plan: drafted on the first build, updated after every one.
+    // Both are best-effort — a planner hiccup must never look like a
+    // failed build.
+    if (!hadProject && (!brain || !brain.phases || !brain.phases.length)) {
+      planBrain(firstPrompt).then(() => advanceBrain(promptText));
+    } else {
+      advanceBrain(promptText);
+    }
   } catch (err) {
     thinking.remove();
     addMsg("err", "⚠️ " + err.message);
@@ -586,6 +634,145 @@ async function readJson(res) {
     throw new Error("Unreadable response from the server (HTTP " + res.status + ").");
   }
 }
+
+// ── Brain: the phase plan ──────────────────────────────────
+// The plan travels with the project, so reopening one picks up exactly
+// where it was — including which phase is active and what is left in it.
+let brain = null;
+let brainOpen = true;
+
+function renderBrain() {
+  const el = $("brain");
+  if (!brain || !brain.phases || !brain.phases.length) { el.style.display = "none"; return; }
+  el.style.display = "";
+  $("brainChev").textContent = brainOpen ? "▾" : "▸";
+  $("brainBody").style.display = brainOpen ? "" : "none";
+
+  const body = $("brainBody");
+  body.innerHTML = "";
+  for (const p of brain.phases) {
+    const wrap = document.createElement("div");
+    wrap.className = "phase" + (p.id === brain.currentPhase ? " active" : "") + (p.status === "done" ? " done" : "");
+
+    const head = document.createElement("div");
+    head.className = "ph";
+    const nm = document.createElement("span");
+    nm.className = "nm";
+    const doneCount = (p.tasks || []).filter(t => t.done).length;
+    nm.textContent = p.name + (p.tasks && p.tasks.length ? "  " + doneCount + "/" + p.tasks.length : "");
+    head.appendChild(nm);
+    if (p.id === brain.currentPhase && p.status !== "done") {
+      const pill = document.createElement("span");
+      pill.className = "pill";
+      pill.textContent = "now";
+      head.appendChild(pill);
+    }
+    wrap.appendChild(head);
+
+    if (p.goal) {
+      const g = document.createElement("div");
+      g.className = "goal";
+      g.textContent = p.goal;
+      wrap.appendChild(g);
+    }
+
+    const ul = document.createElement("ul");
+    for (const t of p.tasks || []) {
+      const li = document.createElement("li");
+      li.className = t.done ? "done" : "";
+      const bx = document.createElement("input");
+      bx.type = "checkbox";
+      bx.className = "bx";
+      bx.checked = !!t.done;
+      // Ticking by hand matters: the model is strict about what counts
+      // as done, and sometimes you just know.
+      bx.onchange = () => { t.done = bx.checked; renderBrain(); autoSave(); };
+      const sp = document.createElement("span");
+      sp.textContent = t.text;
+      li.appendChild(bx); li.appendChild(sp);
+      ul.appendChild(li);
+    }
+    wrap.appendChild(ul);
+    body.appendChild(wrap);
+  }
+}
+
+function showSuggestions(list) {
+  const el = $("suggest");
+  const box = $("suggestList");
+  box.innerHTML = "";
+  if (!list || !list.length) { el.style.display = "none"; return; }
+  for (const s of list) {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.textContent = s;
+    // One click continues the build. Not having to compose the next
+    // prompt yourself is the whole point.
+    b.onclick = () => { $("promptBox").value = s; el.style.display = "none"; send(); };
+    box.appendChild(b);
+  }
+  el.style.display = "";
+}
+
+/** Draft a plan the first time a project is built. */
+async function planBrain(idea) {
+  try {
+    const r = await fetch("/api/brain/plan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: $("providerSel").value, idea }),
+    });
+    if (!r.ok) return;
+    brain = await readJson(r);
+    renderBrain();
+  } catch { /* a missing plan must never block a build */ }
+}
+
+/** After a build: mark progress and offer the next steps. */
+async function advanceBrain(justBuilt) {
+  if (!brain || !brain.phases || !brain.phases.length) return;
+  try {
+    const r = await fetch("/api/brain/advance", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        provider: $("providerSel").value,
+        brain,
+        justBuilt,
+        files: (project.files || []).map(f => ({ path: f.path })),
+      }),
+    });
+    if (!r.ok) return;
+    const out = await readJson(r);
+    if (out.brain) brain = out.brain;
+    renderBrain();
+    showSuggestions(out.suggestions);
+    autoSave();
+  } catch { /* planning is best-effort */ }
+}
+
+$("brainHead").onclick = (e) => {
+  if (e.target.id === "addPhaseBtn") return;
+  brainOpen = !brainOpen;
+  renderBrain();
+};
+
+$("addPhaseBtn").onclick = () => {
+  const name = prompt("Phase name:");
+  if (!name) return;
+  const goal = prompt("What does this phase deliver?") || "";
+  const raw = prompt("Tasks, one per line:") || "";
+  if (!brain) brain = { goal: firstPrompt || "", phases: [], currentPhase: "" };
+  const id = "p" + (brain.phases.length + 1) + "-" + Date.now().toString(36);
+  brain.phases.push({
+    id, name, goal,
+    tasks: raw.split("\n").map(t => t.trim()).filter(Boolean).map(t => ({ text: t, done: false })),
+    status: brain.phases.length ? "planned" : "active",
+  });
+  if (!brain.currentPhase) brain.currentPhase = id;
+  renderBrain();
+  autoSave();
+};
 
 /** Targets whose output can actually run in the preview pane. */
 function canPreview(p) {
@@ -1198,6 +1385,9 @@ let currentProjectId = null;
 
 function applyLoaded(p) {
   firstPrompt = p.prompt || p.name || firstPrompt;
+  brain = (p.brain && p.brain.phases) ? p.brain : null;
+  renderBrain();
+  showSuggestions([]);
   project = { target: p.target || "web", code: p.code || "", files: p.files || [], binaries: p.binaries || [] };
   activeFile = 0;
   $("targetSel").value = project.target;
