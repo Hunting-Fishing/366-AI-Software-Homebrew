@@ -337,6 +337,39 @@ export const FAILURES: FailureMode[] = [
     status: "detected",
   },
 
+  {
+    id: "correction-dropped-files",
+    area: "generation",
+    title: "A correction came back missing files, and replaced the good version",
+    signature: /dropped \d+ file|files? (?:are )?missing and must exist/i,
+    cause:
+      "Edits re-send the whole project and ask for the whole project back, so any file the model leaves out is deleted. The auto-fix pass then accepted that reply on one condition — that it contained at least one file — and never re-checked it. A truncated correction therefore replaced a working project with a broken one, and the build still reported success. RestoBar Manager lost src/App.jsx this way at version 11 and was built on for five more rounds before anyone noticed.",
+    fix: "Output the COMPLETE project on every edit — every file, including the ones you did not touch. A file you omit is deleted.",
+    status: "handled",
+    autoFixable: true,
+  },
+  {
+    id: "import-of-missing-file",
+    area: "generation",
+    title: "A file imports another file that is not in the project",
+    signature: /Imports files that do not exist|404.*\.(?:jsx?|tsx?)\b/i,
+    cause:
+      "The classic symptom of a partial write: the entry imports ./App.jsx and nothing ever created it. The module graph stops at the missing file, so nothing runs and the frame stays blank — with only a 404 in the console to say why.",
+    fix: "Create the missing file, or remove the import. Check the whole project for other imports pointing at files that were never written.",
+    status: "handled",
+  },
+  {
+    id: "sandbox-escape",
+    area: "platform",
+    title: "The preview frame could reach the platform around it",
+    signature: /allow-scripts and allow-same-origin|can escape its sandboxing/i,
+    cause:
+      "The preview iframe was given allow-same-origin alongside allow-scripts, and /live is served from the platform's own origin — so generated code could read parent.document, the session cookie, and call the API as the signed-in user. It was granted to make localStorage work; the storage shim does that without opening the hole.",
+    fix: "The preview frame must never carry allow-same-origin.",
+    status: "handled",
+    autoFixable: true,
+  },
+
   // ── Platform ─────────────────────────────────────────────
   {
     id: "version-collision",

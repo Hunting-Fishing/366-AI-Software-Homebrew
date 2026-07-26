@@ -14,7 +14,7 @@ Every entry has a status:
 - **Detected** — recognised and explained, but someone still has to act.
 - **Open** — known and written down. Nothing stops it yet. **This is the work queue.**
 
-Currently: **9 handled**, **23 detected**, **6 open** — 38 total.
+Currently: **12 handled**, **23 detected**, **6 open** — 41 total.
 
 ## Still open
 
@@ -305,9 +305,39 @@ The model's output never arrived, or arrived unusable.
 
 **Recognised by.** `credit balance|insufficient.*(?:quota|funds|credit)|billing`
 
+#### A correction came back missing files, and replaced the good version
+
+**Handled** · fixed automatically · `correction-dropped-files`
+
+**Cause.** Edits re-send the whole project and ask for the whole project back, so any file the model leaves out is deleted. The auto-fix pass then accepted that reply on one condition — that it contained at least one file — and never re-checked it. A truncated correction therefore replaced a working project with a broken one, and the build still reported success. RestoBar Manager lost src/App.jsx this way at version 11 and was built on for five more rounds before anyone noticed.
+
+**Fix.** Output the COMPLETE project on every edit — every file, including the ones you did not touch. A file you omit is deleted.
+
+**Recognised by.** `dropped \d+ file|files? (?:are )?missing and must exist`
+
+#### A file imports another file that is not in the project
+
+**Handled** · `import-of-missing-file`
+
+**Cause.** The classic symptom of a partial write: the entry imports ./App.jsx and nothing ever created it. The module graph stops at the missing file, so nothing runs and the frame stays blank — with only a 404 in the console to say why.
+
+**Fix.** Create the missing file, or remove the import. Check the whole project for other imports pointing at files that were never written.
+
+**Recognised by.** `Imports files that do not exist|404.*\.(?:jsx?|tsx?)\b`
+
 ## Platform failures
 
 Our own server, storage or deploy path.
+
+#### The preview frame could reach the platform around it
+
+**Handled** · fixed automatically · `sandbox-escape`
+
+**Cause.** The preview iframe was given allow-same-origin alongside allow-scripts, and /live is served from the platform's own origin — so generated code could read parent.document, the session cookie, and call the API as the signed-in user. It was granted to make localStorage work; the storage shim does that without opening the hole.
+
+**Fix.** The preview frame must never carry allow-same-origin.
+
+**Recognised by.** `allow-scripts and allow-same-origin|can escape its sandboxing`
 
 #### Two saves collided
 

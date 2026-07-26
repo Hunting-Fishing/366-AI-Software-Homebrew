@@ -1113,7 +1113,7 @@ async function send() {
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = "", streamed = "", result = null;
+    let buffer = "", streamed = "", result = null, unhealthy = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -1132,6 +1132,12 @@ async function send() {
           streamed = "";
           $("codeView").textContent = "";
           thinking.innerHTML = '<span class="spinner"></span>Found errors in the generated code — auto-fixing…';
+        } else if (event.type === "unhealthy") {
+          // The build finished with the project still broken. This used
+          // to be silent — the reason RestoBar Manager was prompted
+          // into five more times while its entry module imported a file
+          // that had been deleted.
+          unhealthy = event;
         } else if (event.type === "done") {
           result = event;
         } else if (event.type === "error") {
@@ -1147,12 +1153,38 @@ async function send() {
       : { target: result.target, code: "", files: result.files };
     activeFile = 0;
     renderProject();
-    thinking.textContent = hadProject
-      ? "✅ Updated! Anything else?"
-      : (isWeb(project)
-          ? "✅ Done! Tell me what to change, or save/download it."
-          : "✅ Done! " + project.files.length + " files generated.");
+    // "Updated!" over a project that does not compile is the single
+    // most expensive lie this thing can tell — it is what kept a
+    // broken RestoBar Manager being built on top of for five rounds.
+    if (unhealthy) {
+      iconLine(thinking, "alert", "Built, but the project still has problems.");
+      thinking.className = "msg err";
+    } else {
+      thinking.textContent = hadProject
+        ? "Updated! Anything else?"
+        : (isWeb(project)
+            ? "Done! Tell me what to change, or save/download it."
+            : "Done! " + project.files.length + " files generated.");
+    }
     $("status").textContent = "";
+
+    if (unhealthy) {
+      const lost = unhealthy.lost || [];
+      showToast({
+        kind: "build",
+        title: lost.length
+          ? "The correction dropped " + lost.length + " file" + (lost.length === 1 ? "" : "s") + " — kept the previous version instead"
+          : "The build finished, but the project will not run",
+        detail: (lost.length ? "Missing: " + lost.join(", ") + "\n\n" : "") +
+          String(unhealthy.errors || "").slice(0, 700),
+        fix:
+          "The project does not pass its checks. Fix exactly this, and output the " +
+          "COMPLETE project — every file, including ones you did not change. " +
+          "Anything you leave out gets deleted.\n\n" +
+          (lost.length ? "These files are missing and must exist: " + lost.join(", ") + "\n\n" : "") +
+          String(unhealthy.errors || ""),
+      });
+    }
 
     // Persist before anything else — a closed tab should never cost a
     // build. Then boot the preview without being asked, because
@@ -1160,6 +1192,7 @@ async function send() {
     // should not exist.
     autoSave();
     clearToasts("preview");   // a fresh build supersedes the last failure
+    if (!unhealthy) clearToasts("build");
     versionCache = {};
     if (canPreview(project)) runLivePreview({ auto: true });
 
@@ -1445,7 +1478,13 @@ async function runLivePreview(opts) {
     await new Promise((r) => setTimeout(r, 250)); // let 100% register
 
     const iframe = $("preview");
-    iframe.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin");
+    // allow-same-origin is deliberately NOT here. /live is served from
+    // this origin, so granting it alongside allow-scripts lets
+    // generated code reach parent.document, read the session cookie
+    // and call our API as the signed-in user — Chrome warns about
+    // exactly this pairing. It was added to make localStorage work;
+    // the storage shim in the preview does that without the hole.
+    iframe.setAttribute("sandbox", "allow-scripts allow-forms");
     iframe.removeAttribute("srcdoc");
     iframe.src = data.url + "?t=" + Date.now();
     booting = false;

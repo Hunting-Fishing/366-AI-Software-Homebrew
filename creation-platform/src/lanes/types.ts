@@ -55,6 +55,21 @@ export interface FixingEvent {
   errors: string;
 }
 
+/**
+ * The build finished but the result is still broken.
+ *
+ * Previously this case was silent: the auto-fix pass ran, produced
+ * something no better, and the user was told "Updated!". A project
+ * can stay broken across many builds that way, because nothing ever
+ * says otherwise.
+ */
+export interface UnhealthyEvent {
+  type: "unhealthy";
+  errors: string;
+  /** Files the retry dropped that the original had. */
+  lost?: string[];
+}
+
 /** Finished. Single-html targets carry `code`; multi-file carry `files`. */
 export interface DoneEvent {
   type: "done";
@@ -64,7 +79,7 @@ export interface DoneEvent {
 }
 
 /** Emitted by lanes. */
-export type AgentEvent = ChunkEvent | FixingEvent | DoneEvent;
+export type AgentEvent = ChunkEvent | FixingEvent | UnhealthyEvent | DoneEvent;
 
 /** Emitted by the route — lanes throw, the route frames the failure. */
 export interface ErrorEvent {
