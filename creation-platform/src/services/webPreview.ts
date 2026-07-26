@@ -114,6 +114,20 @@ export class WebPreview {
     return [...this.paths].filter((p) => p.endsWith(".css")).sort();
   }
 
+  /** Dependencies declared in package.json, if it parses. */
+  private dependencies(): Record<string, unknown> {
+    const raw = this.files.get("package.json");
+    if (!raw) return {};
+    try {
+      const pkg = JSON.parse(raw) as { dependencies?: Record<string, unknown> };
+      return pkg.dependencies ?? {};
+    } catch {
+      // A malformed package.json must not take the whole preview down —
+      // checkProject() already reports it as an error to the user.
+      return {};
+    }
+  }
+
   private entryModule(): string | null {
     for (const e of SCRIPT_EXT) {
       if (this.paths.has("src/main" + e)) return "src/main" + e;
@@ -135,16 +149,30 @@ export class WebPreview {
     // The import map is what replaces node_modules. React must resolve
     // to ONE instance, or hooks throw "invalid hook call" — hence
     // pinning every react entry point to the same version.
-    const importMap = {
-      imports: {
-        react: `${CDN}/react@${REACT}`,
-        "react/": `${CDN}/react@${REACT}/`,
-        "react-dom": `${CDN}/react-dom@${REACT}?deps=react@${REACT}`,
-        "react-dom/": `${CDN}/react-dom@${REACT}/`,
-        "react/jsx-runtime": `${CDN}/react@${REACT}/jsx-runtime`,
-        "react/jsx-dev-runtime": `${CDN}/react@${REACT}/jsx-dev-runtime`,
-      } as Record<string, string>,
+    const imports: Record<string, string> = {
+      react: `${CDN}/react@${REACT}`,
+      "react/": `${CDN}/react@${REACT}/`,
+      "react-dom": `${CDN}/react-dom@${REACT}?deps=react@${REACT}`,
+      "react-dom/": `${CDN}/react-dom@${REACT}/`,
+      "react/jsx-runtime": `${CDN}/react@${REACT}/jsx-runtime`,
+      "react/jsx-dev-runtime": `${CDN}/react@${REACT}/jsx-dev-runtime`,
     };
+
+    // Any other dependency the model declared gets an entry too, so a
+    // project that reaches for recharts or date-fns still runs. Import
+    // maps have no wildcard, so each name must be listed — hence reading
+    // them out of package.json rather than guessing.
+    //
+    // ?deps=react@... keeps libraries that bundle their own React copy
+    // on OUR React. Two copies is the classic "invalid hook call".
+    for (const [name, range] of Object.entries(this.dependencies())) {
+      if (name === "react" || name === "react-dom") continue;
+      const version = String(range).replace(/^[\^~>=<\s]+/, "") || "latest";
+      imports[name] = `${CDN}/${name}@${version}?deps=react@${REACT},react-dom@${REACT}`;
+      imports[`${name}/`] = `${CDN}/${name}@${version}/`;
+    }
+
+    const importMap = { imports };
 
     const original = this.files.get("index.html") ?? "";
     const title = /<title>([^<]*)<\/title>/.exec(original)?.[1] ?? "Preview";

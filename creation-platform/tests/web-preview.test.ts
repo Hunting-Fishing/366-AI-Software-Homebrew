@@ -136,3 +136,41 @@ test("loading a second project replaces the first", () => {
   assert.equal(wp.serve("/src/App.jsx", "/live").status, 404, "the old project must be gone");
   assert.match(wp.serve("/", "/live").body, /Second/);
 });
+
+test("dependencies from package.json get import map entries", () => {
+  // Import maps have no wildcard, so every bare specifier must be
+  // listed. Without this, a project that imports recharts renders a
+  // blank screen with "Failed to resolve module specifier".
+  const wp = new WebPreview();
+  wp.load([
+    {
+      path: "package.json",
+      content: JSON.stringify({
+        dependencies: { react: "^18.3.1", "react-dom": "^18.3.1", recharts: "^2.12.7" },
+      }),
+    },
+    { path: "src/main.jsx", content: "console.log(1);\n" },
+  ]);
+  const html = wp.serve("/", "/live").body;
+  assert.match(html, /"recharts":\s*"https:\/\/esm\.sh\/recharts@2\.12\.7/);
+});
+
+test("third-party libraries are pinned to OUR react copy", () => {
+  const wp = new WebPreview();
+  wp.load([
+    { path: "package.json", content: JSON.stringify({ dependencies: { recharts: "^2.12.7" } }) },
+    { path: "src/main.jsx", content: "console.log(1);\n" },
+  ]);
+  const html = wp.serve("/", "/live").body;
+  assert.match(html, /recharts@[^"]*deps=react@/,
+    "a library bundling its own React is the classic invalid-hook-call crash");
+});
+
+test("a malformed package.json does not break the preview", () => {
+  const wp = new WebPreview();
+  wp.load([
+    { path: "package.json", content: "{ not json" },
+    { path: "src/main.jsx", content: "console.log(1);\n" },
+  ]);
+  assert.equal(wp.serve("/", "/live").status, 200, "checkProject already reports the bad json");
+});
