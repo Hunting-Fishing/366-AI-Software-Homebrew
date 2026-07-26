@@ -51,19 +51,21 @@ export function projectsRouter(store: ProjectStore): Router {
   // POST /api/projects does.
 
   router.put("/api/projects/:id", async (req: Request, res: Response) => {
-    const { name, code, prompt, target, files, binaries, label } = req.body as {
+    const { name, code, prompt, target, files, binaries, brain, label, silent } = req.body as {
       name?: string;
       code?: string;
       prompt?: string;
       target?: string;
       files?: Array<{ path: string; content: string }>;
       binaries?: Array<{ path: string; b64: string }>;
+      brain?: Record<string, unknown>;
       label?: string;
+      silent?: boolean;
     };
     try {
       const project = await store.update(
         req.params.id ?? "",
-        { name, code, prompt, target, files, binaries, label },
+        { name, code, prompt, target, files, binaries, brain, label, silent },
         req.user?.id
       );
       if (!project) {

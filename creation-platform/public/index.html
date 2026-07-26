@@ -360,7 +360,25 @@ async function openProject(id) {
  * version, so the history stays useful rather than filling with
  * near-identical copies.
  */
-async function autoSave() {
+// Saves are serialised. A build fires one save, the planner fires
+// another moments later, and a ticked checkbox can fire a third — all
+// racing to append a version number they each read separately. Only one
+// is ever in flight; anything requested meanwhile collapses into a
+// single trailing save.
+let saveInFlight = null;
+let savePending = false;
+
+function autoSave(opts) {
+  const silent = Boolean(opts && opts.silent);
+  if (saveInFlight) { savePending = true; return saveInFlight; }
+  saveInFlight = doSave(silent).finally(() => {
+    saveInFlight = null;
+    if (savePending) { savePending = false; autoSave({ silent: true }); }
+  });
+  return saveInFlight;
+}
+
+async function doSave(silent) {
   const body = {
     prompt: firstPrompt,
     target: project.target,
@@ -368,6 +386,10 @@ async function autoSave() {
     files: project.files,
     binaries: project.binaries || [],
     brain: brain || {},
+    // A version means "a build happened". Ticking a task or letting the
+    // planner update the plan is not a build, and versioning those would
+    // bury the real ones under near-identical copies.
+    silent,
   };
   try {
     if (currentProjectId) {
@@ -686,7 +708,7 @@ function renderBrain() {
       bx.checked = !!t.done;
       // Ticking by hand matters: the model is strict about what counts
       // as done, and sometimes you just know.
-      bx.onchange = () => { t.done = bx.checked; renderBrain(); autoSave(); };
+      bx.onchange = () => { t.done = bx.checked; renderBrain(); autoSave({ silent: true }); };
       const sp = document.createElement("span");
       sp.textContent = t.text;
       li.appendChild(bx); li.appendChild(sp);
@@ -747,7 +769,7 @@ async function advanceBrain(justBuilt) {
     if (out.brain) brain = out.brain;
     renderBrain();
     showSuggestions(out.suggestions);
-    autoSave();
+    autoSave({ silent: true });
   } catch { /* planning is best-effort */ }
 }
 
@@ -771,7 +793,7 @@ $("addPhaseBtn").onclick = () => {
   });
   if (!brain.currentPhase) brain.currentPhase = id;
   renderBrain();
-  autoSave();
+  autoSave({ silent: true });
 };
 
 /** Targets whose output can actually run in the preview pane. */

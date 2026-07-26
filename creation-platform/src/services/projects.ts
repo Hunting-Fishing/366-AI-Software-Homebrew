@@ -56,6 +56,15 @@ export interface ProjectPatch {
   brain?: Record<string, unknown>;
   /** Shown in the history list. Defaults to the prompt that produced it. */
   label?: string;
+  /**
+   * Save without adding to the history.
+   *
+   * A version should mean "a build happened". Ticking a task or letting
+   * the planner update the phase plan is not a build, and letting those
+   * append versions would bury the real ones under near-identical
+   * copies — and double the write rate for no gain.
+   */
+  silent?: boolean;
 }
 
 export interface VersionSummary {
@@ -212,7 +221,9 @@ export class JsonProjectStore implements ProjectStore {
     if (!current) return null;
     const next = applyPatch(current, patch);
     fs.writeFileSync(this.file(id), JSON.stringify(next, null, 2));
-    this.appendVersion(id, next, versionLabel(patch, next.prompt));
+    if (!patch.silent) {
+      this.appendVersion(id, next, versionLabel(patch, next.prompt));
+    }
     return next;
   }
 

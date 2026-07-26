@@ -168,24 +168,43 @@ export class SupabaseProjectStore implements ProjectStore {
     label: string,
     userId?: string
   ): Promise<void> {
-    const res = await fetch(this.versionsBase, {
-      method: "POST",
-      headers: this.headers({ prefer: "return=minimal" }),
-      body: JSON.stringify({
-        project_id: project.id,
-        version: await this.nextVersion(project.id),
-        label,
-        prompt: project.prompt,
-        target: project.target,
-        code: project.code,
-        files: project.files,
-        binaries: project.binaries,
-        brain: project.brain,
-        user_id: userId ?? null,
-        created_at: project.savedAt,
-      }),
-    });
-    if (!res.ok) await this.fail("append version", res);
+    // Reading max(version) and then inserting is a read-then-write race:
+    // two saves in flight both read the same number and the second hits
+    // project_versions_unique_version. PostgREST cannot express
+    // "insert ... select max+1" in one statement, so instead the unique
+    // constraint IS the concurrency control — on a collision, re-read
+    // and try again. The constraint doing this job is the point of it.
+    const MAX_ATTEMPTS = 6;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const res = await fetch(this.versionsBase, {
+        method: "POST",
+        headers: this.headers({ prefer: "return=minimal" }),
+        body: JSON.stringify({
+          project_id: project.id,
+          version: await this.nextVersion(project.id),
+          label,
+          prompt: project.prompt,
+          target: project.target,
+          code: project.code,
+          files: project.files,
+          binaries: project.binaries,
+          brain: project.brain,
+          user_id: userId ?? null,
+          created_at: project.savedAt,
+        }),
+      });
+      if (res.ok) return;
+
+      const body = await res.text();
+      const lostTheRace = res.status === 409 && body.includes("23505");
+      if (!lostTheRace || attempt === MAX_ATTEMPTS) {
+        throw new Error(
+          `Supabase append version failed (HTTP ${res.status}): ${body.slice(0, 300)}`
+        );
+      }
+      // Brief jittered backoff so two clients do not lock step.
+      await new Promise((r) => setTimeout(r, 40 + Math.random() * 80));
+    }
   }
 
   async update(
@@ -216,7 +235,9 @@ export class SupabaseProjectStore implements ProjectStore {
     );
     if (!res.ok) await this.fail("update", res);
 
-    await this.appendVersion(next, versionLabel(patch, next.prompt), userId);
+    if (!patch.silent) {
+      await this.appendVersion(next, versionLabel(patch, next.prompt), userId);
+    }
     return next;
   }
 
