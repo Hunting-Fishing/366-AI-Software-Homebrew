@@ -175,14 +175,16 @@ test("renaming does not create a version", () => {
 test("generated apps are told not to use emoji as icons either", () => {
   // The preview screenshot had the same problem one level down: the
   // model reached for 📊 and 📦 because nothing told it not to.
-  assert.match(DESIGN_RULES, /never use emoji as an icon/i);
-  assert.match(DESIGN_RULES, /stroke="currentColor"/);
+  assert.match(DESIGN_RULES, /Never emoji/i);
+  // The advice changed from hand-drawn SVG to the icon package once
+  // lucide-react entered the catalogue; the ban did not.
+  assert.match(DESIGN_RULES, /lucide-react/);
   assert.match(DESIGN_TASTE, /emoji/i);
 });
 
 test("the icon rule explains what to do instead, not just what to avoid", () => {
   // A prohibition on its own leaves the model with no icon at all,
   // which is worse than the emoji.
-  assert.match(DESIGN_RULES, /inline SVG/i);
+  assert.match(DESIGN_RULES, /import \{ Truck, Receipt, Users \} from 'lucide-react'/);
   assert.match(DESIGN_RULES, /aria-hidden/);
 });

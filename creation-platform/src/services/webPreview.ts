@@ -20,17 +20,15 @@
 // cannot OOM. What is lost is hot-module reload and Vite plugins —
 // neither of which a generated single-shot project uses.
 //
-// The generated projects only ever import react and react-dom (the
-// system prompt in targets.ts forbids other packages), but the import
-// map falls through to esm.sh for anything else, so an occasional
-// extra dependency still resolves.
+// Which packages may be imported is decided by src/packages.ts, not by
+// whatever the model happened to write in package.json. See the note
+// there: a pinned catalogue turns "does this package exist?" from a
+// recollection into a lookup.
 
 import ts from "typescript";
 import type { ProjectFile } from "../lib/files.js";
 import { BASE_CSS, TAILWIND_CDN } from "../design.js";
-
-const CDN = "https://esm.sh";
-const REACT = "18.3.1";
+import { importMapFor } from "../packages.js";
 
 const SCRIPT_EXT = [".jsx", ".tsx", ".js", ".ts", ".mjs"];
 
@@ -115,13 +113,20 @@ export class WebPreview {
     return [...this.paths].filter((p) => p.endsWith(".css")).sort();
   }
 
-  /** Dependencies declared in package.json, if it parses. */
-  private dependencies(): Record<string, unknown> {
+  /**
+   * Dependencies declared in package.json, if it parses.
+   *
+   * Only the NAMES matter now — versions come from the catalogue, so a
+   * version the model invented cannot take effect.
+   */
+  private dependencies(): Record<string, string> {
     const raw = this.files.get("package.json");
     if (!raw) return {};
     try {
       const pkg = JSON.parse(raw) as { dependencies?: Record<string, unknown> };
-      return pkg.dependencies ?? {};
+      const out: Record<string, string> = {};
+      for (const k of Object.keys(pkg.dependencies ?? {})) out[k] = "";
+      return out;
     } catch {
       // A malformed package.json must not take the whole preview down —
       // checkProject() already reports it as an error to the user.
@@ -177,31 +182,15 @@ export class WebPreview {
       };
     }
 
-    // The import map is what replaces node_modules. React must resolve
-    // to ONE instance, or hooks throw "invalid hook call" — hence
-    // pinning every react entry point to the same version.
-    const imports: Record<string, string> = {
-      react: `${CDN}/react@${REACT}`,
-      "react/": `${CDN}/react@${REACT}/`,
-      "react-dom": `${CDN}/react-dom@${REACT}?deps=react@${REACT}`,
-      "react-dom/": `${CDN}/react-dom@${REACT}/`,
-      "react/jsx-runtime": `${CDN}/react@${REACT}/jsx-runtime`,
-      "react/jsx-dev-runtime": `${CDN}/react@${REACT}/jsx-dev-runtime`,
-    };
-
-    // Any other dependency the model declared gets an entry too, so a
-    // project that reaches for recharts or date-fns still runs. Import
-    // maps have no wildcard, so each name must be listed — hence reading
-    // them out of package.json rather than guessing.
-    //
-    // ?deps=react@... keeps libraries that bundle their own React copy
-    // on OUR React. Two copies is the classic "invalid hook call".
-    for (const [name, range] of Object.entries(this.dependencies())) {
-      if (name === "react" || name === "react-dom") continue;
-      const version = String(range).replace(/^[\^~>=<\s]+/, "") || "latest";
-      imports[name] = `${CDN}/${name}@${version}?deps=react@${REACT},react-dom@${REACT}`;
-      imports[`${name}/`] = `${CDN}/${name}@${version}/`;
-    }
+    // The import map is what replaces node_modules — and it is built
+    // from the CATALOGUE, not from package.json. The model used to
+    // supply both the package name and the version from memory, and
+    // both were guesses; a pinned list turns "does this exist?" from a
+    // guess into a lookup. Anything declared but not catalogued gets an
+    // entry that throws its own explanation, because leaving it out
+    // produces "Failed to resolve module specifier", which looks
+    // identical to a typo.
+    const imports = importMapFor(this.dependencies());
 
     const importMap = { imports };
 

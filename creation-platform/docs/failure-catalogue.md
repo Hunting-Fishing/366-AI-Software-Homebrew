@@ -14,7 +14,7 @@ Every entry has a status:
 - **Detected** — recognised and explained, but someone still has to act.
 - **Open** — known and written down. Nothing stops it yet. **This is the work queue.**
 
-Currently: **13 handled**, **23 detected**, **6 open** — 42 total.
+Currently: **14 handled**, **23 detected**, **5 open** — 42 total.
 
 ## Still open
 
@@ -23,7 +23,6 @@ The ones worth fixing next:
 - **An image or asset is missing** — The code references a file that is not part of the project. `asset-404`
 - **The app renders but is completely unstyled** — Tailwind is loaded from a CDN at runtime. `tailwind-cdn-down`
 - **No package.json, so no packages resolve** — The import map is built from package. `missing-package-json`
-- **A package was declared that does not exist** — A plausible-sounding but non-existent package name, or a version that was never published. `phantom-dependency`
 - **The project no longer fits in one request** — Every edit sends the whole project. `context-exceeded`
 - **The preview shows the previous build** — A build finished but the preview was not reloaded, so the frame shows older code. `stale-preview`
 
@@ -247,13 +246,13 @@ The model's output never arrived, or arrived unusable.
 
 #### A package was declared that does not exist
 
-**Open** · `phantom-dependency`
+**Handled** · `phantom-dependency`
 
-**Cause.** A plausible-sounding but non-existent package name, or a version that was never published. Fails at fetch time, in the browser, as a network error rather than anything obviously about the package.
+**Cause.** A plausible-sounding but non-existent package name, or a version that was never published — the model supplied both from memory. It used to fail at fetch time in the browser, as a network error rather than anything obviously about the package. Generation is now constrained to the pinned catalogue in src/packages.ts, so an unlisted package is caught by checkProject before the code is ever served, and versions come from the catalogue rather than from package.json.
 
-**Fix.** Only use packages you are certain exist, at versions you are certain were published.
+**Fix.** Use a package from the available list. Nothing else can be loaded.
 
-**Recognised by.** Nothing — this one has no error message, which is why it is hard to spot.
+**Recognised by.** `is not an available package|packages are not available`
 
 #### The AI provider rejected the API key
 

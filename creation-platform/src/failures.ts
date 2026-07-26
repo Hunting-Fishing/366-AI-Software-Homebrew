@@ -283,11 +283,11 @@ export const FAILURES: FailureMode[] = [
     id: "phantom-dependency",
     area: "generation",
     title: "A package was declared that does not exist",
-    signature: null,
+    signature: /is not an available package|packages are not available/i,
     cause:
-      "A plausible-sounding but non-existent package name, or a version that was never published. Fails at fetch time, in the browser, as a network error rather than anything obviously about the package.",
-    fix: "Only use packages you are certain exist, at versions you are certain were published.",
-    status: "open",
+      "A plausible-sounding but non-existent package name, or a version that was never published — the model supplied both from memory. It used to fail at fetch time in the browser, as a network error rather than anything obviously about the package. Generation is now constrained to the pinned catalogue in src/packages.ts, so an unlisted package is caught by checkProject before the code is ever served, and versions come from the catalogue rather than from package.json.",
+    fix: "Use a package from the available list. Nothing else can be loaded.",
+    status: "handled",
   },
   {
     id: "provider-auth",

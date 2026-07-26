@@ -21,6 +21,7 @@ import os from "node:os";
 import path from "node:path";
 import ts from "typescript";
 import type { ProjectFile } from "./files.js";
+import { CATALOGUE, inCatalogue } from "../packages.js";
 
 export interface CheckResult {
   ok: boolean;
@@ -246,6 +247,26 @@ function checkReact(files: ProjectFile[], capacitor = false): CheckResult {
   );
   if (!hasEntry) {
     problems.push("Missing an entry module — expected src/main.jsx (or src/index.jsx).");
+  }
+
+  // 3b. Every declared package must be one we can actually serve.
+  //     Caught here rather than in the browser: an uncatalogued package
+  //     fails at runtime, minutes after the generation that chose it,
+  //     and reads as a network problem rather than a wrong choice.
+  const pkgRaw = files.find((f) => f.path === "package.json")?.content;
+  if (pkgRaw) {
+    try {
+      const deps = (JSON.parse(pkgRaw) as { dependencies?: Record<string, string> }).dependencies ?? {};
+      const unknown = Object.keys(deps).filter((d) => !inCatalogue(d));
+      if (unknown.length) {
+        problems.push(
+          "--- package.json ---\nThese packages are not available: " +
+            unknown.map((u) => `"${u}"`).join(", ") +
+            ".\nOnly these may be used: " + CATALOGUE.map((p) => p.name).join(", ") +
+            ".\nRemove the imports, or rebuild that part with a package from the list."
+        );
+      }
+    } catch { /* the malformed-json case is already reported above */ }
   }
 
   // 4. Every script file must parse.

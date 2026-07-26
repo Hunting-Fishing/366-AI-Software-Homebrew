@@ -18,6 +18,8 @@
 // grey boxes; "18-24px card padding, one accent colour, 1.5 line height
 // on body text" produces something that looks designed.
 
+import { catalogueRules } from "./packages.js";
+
 /** Tailwind Play CDN — no build step, resolved by the browser. */
 export const TAILWIND_CDN =
   '<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>';
@@ -71,6 +73,8 @@ button{cursor:pointer}
  * one accent colour" produces a consistent result.
  */
 export const DESIGN_RULES = `
+${catalogueRules()}
+
 DESIGN SYSTEM — follow this, it is what separates a real product from a school project:
 
 STYLING METHOD
@@ -87,12 +91,12 @@ COLOUR
 - Never more than one accent. Rainbow UIs read as amateur.
 - Body text at high contrast, secondary text one step down (text-slate-400 on dark, text-slate-600 on light). Never grey-on-grey.
 
-ICONS — never use emoji as an icon
-- Emoji (📊 📦 ⚖️ 🚀) are drawn by the operating system's own bitmap font. They cannot take your colour, cannot match your type size, and look completely different on Windows, macOS, Android and iOS. A UI iconed with emoji reads as unfinished no matter how good the rest is.
-- Use inline SVG instead: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">…</svg>. stroke="currentColor" is the important part — the icon then always matches the text beside it.
-- Draw simple 24x24 stroked shapes in that style (the Lucide/Feather look): a few paths, circles and rects. A receipt is a rounded rect with three lines in it; a chart is three bars; a book is two curved paths. Do not attempt detailed illustration.
-- Icons are decorative next to a label, so add aria-hidden="true". An icon-only button needs aria-label.
-- Emoji are fine inside sample content a user would actually type (a note, a message). They are not fine as interface furniture.
+ICONS — use lucide-react, never emoji
+- import { Truck, Receipt, Users } from 'lucide-react' then <Truck className="w-5 h-5" aria-hidden="true" />. About 1500 icons, all one consistent stroked set, all inheriting the current text colour.
+- Never emoji (📊 📦 ⚖️ 🚀) as an icon. They are drawn by the operating system's own bitmap font: they cannot take your colour, cannot match your type size, and look completely different on Windows, macOS, Android and iOS. A UI iconed with emoji reads as unfinished no matter how good the rest is.
+- Do not hand-write SVG paths when an icon exists for it. Hand-drawn SVG is only for something genuinely bespoke, like a logo.
+- Icons beside a label are decorative, so add aria-hidden="true". An icon-only button needs aria-label.
+- Emoji are fine inside sample content a person would actually type (a note, a message). They are not fine as interface furniture.
 
 DEPTH AND SHAPE
 - Cards: rounded-xl, a subtle border (border border-slate-800 / border-slate-200), and either a soft shadow OR a border — not both heavily.
