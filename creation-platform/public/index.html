@@ -316,6 +316,15 @@
   #fileTabs { display: flex; gap: 3px; padding: 8px 12px 0; flex-wrap: wrap; flex: 0 0 auto; }
   #fileTabs button { font-size: 11.5px; height: 26px; padding: 0 9px; border-radius: 6px 6px 0 0; color: var(--muted); background: var(--panel2); }
   #fileTabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  /* What the last build touched. Colour beats reading 29 file names. */
+  #fileTabs button { display: inline-flex; align-items: center; gap: 6px; }
+  #fileTabs button .dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }
+  #fileTabs button.ch-added { color: var(--good); border-color: var(--good); }
+  #fileTabs button.ch-added .dot { background: var(--good); }
+  #fileTabs button.ch-modified { color: var(--accent-hi); border-color: var(--accent-hi); }
+  #fileTabs button.ch-modified .dot { background: var(--accent-hi); }
+  #fileTabs button.ch-removed { color: var(--danger); text-decoration: line-through; opacity: .6; }
+  #fileTabs button.active.ch-added, #fileTabs button.active.ch-modified { color: #fff; }
   #codeView {
     flex: 1; overflow: auto; margin: 0; padding: 16px 18px;
     font: 12.5px/1.65 ui-monospace, "SF Mono", Consolas, monospace;
@@ -1049,17 +1058,48 @@ function showTab(which) {
   if (which === "history") renderHistory();
 }
 
+// What the last build did to each file, so a 29-file project does not
+// require diffing by eye to find the two that changed.
+let lastChange = { added: [], modified: [], removed: [] };
+
+function changeOf(path) {
+  if (lastChange.added.includes(path)) return "added";
+  if (lastChange.modified.includes(path)) return "modified";
+  return "";
+}
+
 function renderFileTabs() {
   const tabs = $("fileTabs");
   tabs.innerHTML = "";
   if (!project || isWeb(project)) return;
-  project.files.forEach((f, i) => {
+
+  // Changed files first: they are what you opened the tab to look at.
+  const order = project.files
+    .map((f, i) => ({ f, i, kind: changeOf(f.path) }))
+    .sort((a, b) => (a.kind ? 0 : 1) - (b.kind ? 0 : 1));
+
+  for (const { f, i, kind } of order) {
     const b = document.createElement("button");
-    b.textContent = f.path;
-    b.className = i === activeFile ? "active" : "";
+    b.className = (i === activeFile ? "active " : "") + (kind ? "ch-" + kind : "");
+    if (kind) {
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.title = kind === "added" ? "Created by the last build" : "Changed by the last build";
+      b.appendChild(dot);
+    }
+    b.appendChild(document.createTextNode(f.path));
     b.onclick = () => { activeFile = i; renderProject(); showTab("code"); };
     tabs.appendChild(b);
-  });
+  }
+
+  for (const p of lastChange.removed) {
+    const b = document.createElement("button");
+    b.className = "ch-removed";
+    b.textContent = p;
+    b.disabled = true;
+    b.title = "Deleted by the last build";
+    tabs.appendChild(b);
+  }
 }
 
 function renderProject() {
@@ -1178,6 +1218,7 @@ async function send() {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "", streamed = "", result = null, unhealthy = null;
+    const startedAt = Date.now();
 
     while (true) {
       const { done, value } = await reader.read();
@@ -1192,6 +1233,11 @@ async function send() {
           streamed += event.text;
           $("codeView").textContent = streamed;
           $("codeView").scrollTop = $("codeView").scrollHeight;
+          // Real progress, not a spinner. A true percentage is not
+          // knowable — nobody knows how many files the model will
+          // write until it writes them — but "4 files, 38s" is honest
+          // and answers the question people actually have.
+          showProgress(thinking, streamed, startedAt);
         } else if (event.type === "fixing") {
           streamed = "";
           $("codeView").textContent = "";
@@ -1204,6 +1250,11 @@ async function send() {
           unhealthy = event;
         } else if (event.type === "done") {
           result = event;
+          lastChange = {
+            added: event.added || [],
+            modified: event.modified || [],
+            removed: event.removed || [],
+          };
         } else if (event.type === "error") {
           throw new Error(event.message);
         }
@@ -2059,6 +2110,17 @@ function showToast(opts) {
       send();
     };
     acts.appendChild(fix);
+
+    // Take me to it. A file name in an error message is useless if
+    // finding it means scanning twenty-nine tabs.
+    const where = fileNamed(opts.detail || opts.title);
+    if (where >= 0) {
+      const go = document.createElement("button");
+      setBtn(go, "code", "Show me");
+      go.onclick = () => { activeFile = where; renderProject(); showTab("code"); };
+      acts.appendChild(go);
+    }
+
     const copy = document.createElement("button");
     copy.textContent = "Copy error";
     copy.onclick = async () => {
@@ -2075,6 +2137,22 @@ function showToast(opts) {
   el.querySelector(".x").onclick = () => el.remove();
   $("alerts").appendChild(el);
   return el;
+}
+
+/**
+ * The index of the first project file an error text names.
+ *
+ * Errors quote paths in several shapes — "src/main.jsx", "./App.jsx",
+ * "/live/tok/src/App.jsx" — so match on the tail of the path rather
+ * than trying to normalise every form.
+ */
+function fileNamed(text) {
+  if (!project || !project.files || !text) return -1;
+  let best = -1, bestLen = 0;
+  project.files.forEach((f, i) => {
+    if (text.includes(f.path) && f.path.length > bestLen) { best = i; bestLen = f.path.length; }
+  });
+  return best;
 }
 
 /**
@@ -2666,6 +2744,31 @@ $("mRename").onclick = async () => {
     }
   }
 };
+
+/**
+ * Live progress while the model writes.
+ *
+ * A real percentage is not knowable: nobody knows how many files the
+ * reply will contain until it contains them. But the two questions
+ * people actually have — is it moving, and how far in is it — are both
+ * answerable from the stream itself.
+ */
+function showProgress(el, streamed, startedAt) {
+  const started = [...streamed.matchAll(/^===FILE:\s*(.+?)\s*===/gm)].map((m) => m[1]);
+  const finished = (streamed.match(/^===ENDFILE===/gm) || []).length;
+  const secs = Math.round((Date.now() - startedAt) / 1000);
+  const current = started[started.length - 1];
+
+  let line;
+  if (!started.length) {
+    line = "Thinking\u2026  " + secs + "s";
+  } else {
+    const done = finished + " of " + started.length + " file" + (started.length === 1 ? "" : "s");
+    line = "Writing " + (current || "") + "  \u00b7  " + done + "  \u00b7  " + secs + "s";
+  }
+  el.innerHTML = '<span class="spinner"></span>';
+  el.appendChild(document.createTextNode(line));
+}
 
 // ── Integrations ────────────────────────────────────────────
 // Where a project is linked to the user's OWN Supabase or GitHub.

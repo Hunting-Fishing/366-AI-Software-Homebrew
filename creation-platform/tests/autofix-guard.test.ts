@@ -113,11 +113,16 @@ test("the lane emits an unhealthy event when the result is broken", () => {
     "a build that ends broken must say so, not just quietly keep the old files");
 });
 
-test("the retry prompt warns that omitted files are deleted", () => {
-  // The model has no way to know that a partial answer is destructive
-  // unless it is told. Nothing in the old prompt said so.
+test("the retry asks for the smallest set of files, not the whole project", () => {
+  // This assertion used to be the opposite — the retry warned that
+  // omitted files would be deleted, because they were. Once edits
+  // became merges, demanding the complete project was the thing
+  // making Fix impossible on a large one: no reply short of all 29
+  // files was ever accepted.
   const src = fs.readFileSync(new URL("../src/lanes/inhouse.ts", import.meta.url), "utf8");
-  assert.match(src, /will be DELETED from the project/);
+  assert.match(src, /Everything you leave out is kept as it is/);
+  assert.match(src, /smallest set of files/);
+  assert.doesNotMatch(src, /will be DELETED from the project/);
 });
 
 test("the client stops claiming success over a broken project", () => {

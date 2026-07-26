@@ -58,7 +58,10 @@ test("an edit replays the existing project as context", () => {
     { path: "src/App.jsx", content: "export default function App(){}\n" },
   ]);
   assert.equal(msgs.length, 3);
-  assert.equal(msgs[2]?.content, "make it blue");
+  assert.match(msgs[2]?.content ?? "", /^make it blue/);
+  // The edit contract rides along, because a model told nothing about
+  // merging re-emits the whole project out of caution.
+  assert.match(msgs[2]?.content ?? "", /ONLY the files you actually changed/i);
   assert.match(msgs[0]?.content ?? "", /===FILE: src\/App\.jsx===/);
 });
 

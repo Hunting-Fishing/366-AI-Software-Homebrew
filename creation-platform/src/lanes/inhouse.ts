@@ -8,17 +8,36 @@
 // lane that understands Godot projects, book pipelines and video
 // scene JSON.
 //
-// Known weakness — the reason Lane B exists: on an edit it re-sends
-// the entire project and asks for the entire project back. Cost and
-// latency scale with project size, and nothing constrains the model
-// to leave untouched files alone.
+// EDITS ARE MERGED, NOT REPLACED.
+// An edit used to send the whole project and take the whole project
+// back, so a one-line fix rewrote every file, and anything the model
+// omitted was deleted. The reply is now merged onto what exists:
+// files present are written, files absent are kept, and removal must
+// be asked for with ===DELETE:. See applyEdit in lib/files.ts.
 
 import { streamGenerate, type ChatMessage } from "../providers/index.js";
 import { getTarget } from "../targets.js";
 import { extractHtml } from "../lib/extract.js";
-import { parseFiles, serializeFiles, type ProjectFile } from "../lib/files.js";
+import { parseFiles, parseDeletions, applyEdit, serializeFiles, type ProjectFile } from "../lib/files.js";
 import { checkProject, type CheckResult } from "../lib/check.js";
 import type { AgentEvent, AgentLane, LaneRequest } from "./types.js";
+
+/**
+ * The rule that makes an edit an edit.
+ *
+ * Without this the model re-emits the entire project for a one-line
+ * change: slow, expensive, and — before applyEdit — destructive, since
+ * anything it left out was deleted.
+ */
+export const EDIT_CONTRACT = [
+  "IMPORTANT — how to reply to an edit:",
+  "- Output ONLY the files you actually changed, plus any new files. Use the same ===FILE: path=== / ===ENDFILE=== format.",
+  "- Files you do not include are LEFT EXACTLY AS THEY ARE. You do not need to re-send them, and re-sending an unchanged file wastes time and money for no benefit.",
+  "- When a file does need changing, output that whole file, complete. There is no patch format here.",
+  "- To remove a file, write a line: ===DELETE: path/of/file.ext===  Do this only when the change genuinely requires it.",
+  "- Before you finish: if you referenced a file that does not exist yet, create it in this same reply. A missing import is the most common way an edit breaks a working app.",
+  "- Start with one short sentence saying what you changed and why. No other prose.",
+].join("\n");
 
 export function buildMessages(
   prompt: string,
@@ -34,7 +53,7 @@ export function buildMessages(
     return [
       { role: "user", content: "Here is my current project:\n\n" + existing },
       { role: "assistant", content: "Understood. What would you like to change?" },
-      { role: "user", content: prompt },
+      { role: "user", content: prompt + "\n\n" + EDIT_CONTRACT },
     ];
   }
   return [{ role: "user", content: "Build this: " + prompt }];
@@ -73,7 +92,20 @@ export const inhouseLane: AgentLane = {
       return;
     }
 
-    let files = parseFiles(full, target.fallbackFile);
+    // On an edit, the reply is a patch: merge it onto what exists. On
+    // a first build there is nothing to merge onto, so it stands alone.
+    const base = req.files ?? [];
+    const isEdit = base.length > 0;
+
+    const merge = (text: string, onto: ProjectFile[]) => {
+      const parsed = parseFiles(text, target.fallbackFile);
+      return isEdit
+        ? applyEdit(onto, parsed, parseDeletions(text))
+        : { files: parsed, added: parsed.map((f) => f.path), modified: [], removed: [] };
+    };
+
+    let edit = merge(full, base);
+    let files = edit.files;
 
     // ── Auto-fix pass (one attempt) ──────────────────────────
     // Check the generated code; if it has errors, show them to the
@@ -102,16 +134,31 @@ export const inhouseLane: AgentLane = {
         {
           role: "user",
           content:
-            "Your code has errors. Fix them and output the corrected COMPLETE project — " +
-            "every file, including the ones that were already correct, in the same " +
-            "===FILE: format. Anything you leave out will be DELETED from the project, " +
-            "so a partial answer breaks the build.\n\nErrors:\n\n" + check.errors,
+            "That has errors. Fix them.\n\n" +
+            "Output ONLY the files you need to change or create, in the same " +
+            "===FILE: format. Everything you leave out is kept as it is, so send " +
+            "the smallest set of files that actually fixes this.\n\n" +
+            "If a file is imported but missing, CREATE it — do not remove the " +
+            "import unless the feature is genuinely unwanted.\n\nErrors:\n\n" +
+            check.errors,
         },
       ];
       const fixed = yield* runStream(fixMessages);
-      const fixedFiles = parseFiles(fixed, target.fallbackFile);
+      // The correction is a patch onto the attempt we just made, not a
+      // replacement for it. This is what makes Fix work on a large
+      // project: the model sends the two files that matter, and the
+      // other twenty-seven survive because nothing touched them.
+      const attempt = applyEdit(files, parseFiles(fixed, target.fallbackFile), parseDeletions(fixed));
 
-      const verdict = betterOf(target.id, files, fixedFiles);
+      const verdict = betterOf(target.id, files, attempt.files);
+      if (verdict.files === attempt.files) {
+        edit = {
+          files: attempt.files,
+          added: [...new Set([...edit.added, ...attempt.added])],
+          modified: [...new Set([...edit.modified, ...attempt.modified])],
+          removed: [...new Set([...edit.removed, ...attempt.removed])],
+        };
+      }
       files = verdict.files;
       residual = verdict.check;
       if (verdict.lost.length) {
@@ -128,7 +175,16 @@ export const inhouseLane: AgentLane = {
       yield { type: "unhealthy", errors: residual.errors };
     }
 
-    yield { type: "done", target: target.id, files };
+    yield {
+      type: "done",
+      target: target.id,
+      files,
+      // What actually changed, so the UI can colour it rather than
+      // making the user diff twenty-nine files by eye.
+      added: edit.added,
+      modified: edit.modified,
+      removed: edit.removed,
+    };
   },
 };
 

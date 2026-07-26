@@ -76,6 +76,12 @@ export interface DoneEvent {
   target: string;
   code?: string;
   files?: ProjectFile[];
+  /** Paths created by this build. */
+  added?: string[];
+  /** Paths whose content changed. Re-sent-but-identical is neither. */
+  modified?: string[];
+  /** Paths explicitly deleted. */
+  removed?: string[];
 }
 
 /** Emitted by lanes. */
