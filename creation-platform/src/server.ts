@@ -23,6 +23,7 @@ import { availableVideoProviders } from "./providers/videos.js";
 import { FAILURES } from "./failures.js";
 import { integrationsRouter } from "./routes/integrations.js";
 import { canExecute } from "./services/sandbox.js";
+import { CONNECTORS, CATEGORIES } from "./connectors.js";
 import { ffmpegAvailable, MEDIA_DIR } from "./services/studio.js";
 import { authMiddleware, loginHandler } from "./middleware/auth.js";
 import { authRouter } from "./routes/auth.js";
@@ -89,6 +90,13 @@ app.get("/api/failures", (_req, res) => {
       signature: f.signature ? { source: f.signature.source, flags: f.signature.flags } : null,
     }))
   );
+});
+
+// The connector catalogue. Everything, with honest status — a "soon"
+// entry links out to the service so the card is useful today even
+// though the integration is not.
+app.get("/api/connectors", (_req, res) => {
+  res.json({ connectors: CONNECTORS, categories: CATEGORIES });
 });
 
 app.use(generateRouter);

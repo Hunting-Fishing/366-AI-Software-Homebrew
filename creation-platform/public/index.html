@@ -343,6 +343,8 @@
     position: fixed; z-index: 71; display: none;
     top: 50%; left: 50%; transform: translate(-50%, -50%);
     width: min(560px, calc(100vw - 32px)); max-height: min(80vh, 700px);
+    /* wide is the connector browser: a sidebar plus a two-column grid
+       needs room, and a cramped catalogue is worse than a list. */
     background: var(--panel); border: 1px solid var(--border);
     border-radius: 16px; box-shadow: var(--pop-shadow);
     flex-direction: column; overflow: hidden;
@@ -356,7 +358,69 @@
   .modalHead .x { width: 28px; height: 28px; padding: 0; display: grid; place-items: center;
     background: transparent; border: none; color: var(--muted); }
   .modalHead .x:hover { color: var(--text); background: var(--hover); }
-  .modalBody { padding: 16px 18px 20px; overflow-y: auto; }
+  .modal.wide { width: min(1040px, calc(100vw - 32px)); max-height: min(86vh, 820px); }
+  .modalHead .crumb { font-size: 13px; color: var(--muted); }
+  .modalHead .crumb:not(:empty)::before { content: "/"; margin-right: 9px; color: var(--faint); }
+  .split { display: flex; min-height: 0; flex: 1; }
+  .side {
+    width: 200px; flex: 0 0 auto; border-right: 1px solid var(--border);
+    padding: 12px; overflow-y: auto; background: var(--panel2);
+  }
+  .side input { width: 100%; height: 32px; margin-bottom: 12px; }
+  .side .grp { font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--faint); padding: 12px 8px 6px; }
+  .side button {
+    display: flex; width: 100%; align-items: center; height: 30px; padding: 0 9px;
+    background: transparent; border: none; border-radius: 7px;
+    color: var(--muted); font-size: 12.5px; text-align: left; margin-bottom: 1px;
+  }
+  .side button .n { flex: 1; }
+  .side button .c { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .side button:hover { background: var(--hover); color: var(--text); border-color: transparent; }
+  .side button.on { background: var(--raised); color: var(--text); font-weight: 500; }
+  .modalBody { padding: 16px 18px 20px; overflow-y: auto; flex: 1; min-width: 0; }
+
+  /* ── Connector cards ──────────────────────────────────────*/
+  .conGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+  .conCard {
+    display: flex; gap: 12px; align-items: flex-start; text-align: left;
+    padding: 13px 14px; height: auto; border-radius: var(--r-lg);
+    background: var(--panel); border: 1px solid var(--border); color: var(--text);
+    transition: border-color .14s, transform .12s, background .14s;
+  }
+  .conCard:hover { border-color: var(--accent); background: var(--panel2); transform: translateY(-1px); }
+  /* Brand logos are not ours to ship, so a tinted monogram stands in.
+     Consistent, legal, and it still makes the grid scannable. */
+  .tile {
+    width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto;
+    display: grid; place-items: center; font-size: 11.5px; font-weight: 700;
+    letter-spacing: .02em; color: #fff; position: relative;
+  }
+  .tile .pip {
+    position: absolute; top: -2px; right: -2px; width: 9px; height: 9px;
+    border-radius: 50%; border: 2px solid var(--panel);
+  }
+  .conCard .bd { min-width: 0; flex: 1; }
+  .conCard .nm { font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
+  .conCard .bl { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 3px; }
+  .pill {
+    font-size: 9.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 99px; background: var(--raised); color: var(--faint);
+    border: 1px solid var(--border); white-space: nowrap;
+  }
+  .pill.ok { background: var(--good); color: var(--on-good); border-color: transparent; }
+  .conHead { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
+  .conHead .tile { width: 46px; height: 46px; font-size: 15px; border-radius: 12px; }
+  .conHead h3 { font-size: 17px; font-weight: 600; }
+  .conHead .sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .sect { font-size: 13.5px; font-weight: 600; margin: 22px 0 8px; }
+  .sect:first-of-type { margin-top: 0; }
+  .lead { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+  .back { height: 28px; font-size: 12px; padding: 0 10px; margin-bottom: 14px; }
+  .empty2 {
+    border: 1px dashed var(--border); border-radius: var(--r-lg);
+    padding: 26px; text-align: center; font-size: 12.5px; color: var(--faint);
+  }
   .intCard {
     border: 1px solid var(--border); border-radius: var(--r-lg);
     padding: 14px 15px; margin-bottom: 12px; background: var(--panel2);
@@ -618,13 +682,20 @@
 <!-- Integrations. Reached from the project menu; this is where a
      project is linked to a user's own Supabase or GitHub. -->
 <div id="intScrim" class="modalScrim"></div>
-<div id="intPanel" class="modal" role="dialog" aria-modal="true" aria-labelledby="intTitle">
+<div id="intPanel" class="modal wide" role="dialog" aria-modal="true" aria-labelledby="intTitle">
   <div class="modalHead">
     <span data-icon="plug"></span>
-    <h2 id="intTitle">Integrations</h2>
+    <h2 id="intTitle">Connectors</h2>
+    <span class="crumb" id="intCrumb"></span>
     <button class="x" id="intClose" aria-label="Close"></button>
   </div>
-  <div class="modalBody" id="intBody"></div>
+  <div class="split">
+    <aside class="side">
+      <input type="text" id="conSearch" placeholder="Search" autocomplete="off">
+      <nav id="conNav"></nav>
+    </aside>
+    <div class="modalBody" id="intBody"></div>
+  </div>
 </div>
 
 <!-- Project menu. Opened from the brand button, top left. -->
@@ -2770,45 +2841,31 @@ function showProgress(el, streamed, startedAt) {
   el.appendChild(document.createTextNode(line));
 }
 
-// ── Integrations ────────────────────────────────────────────
-// Where a project is linked to the user's OWN Supabase or GitHub.
-// Secrets go in and never come back: the server returns config and a
-// hasSecret flag, never the value, so nothing here can render one.
+// ── Connectors ──────────────────────────────────────────────
+// A connector links a project to a service the user already pays for.
+// Two are wired up. The whole catalogue is shown anyway, with honest
+// status: listing only the working two answers "what can this do?"
+// with "almost nothing", which is discouraging and untrue about the
+// direction. Every "soon" card links out to the service, so it is
+// useful today even though the integration is not.
 
-const INTEGRATIONS = [
-  {
-    kind: "supabase",
-    name: "Supabase",
-    blurb: "Link this project to your own Supabase, so its data lives in a database you own and control. Leave it unlinked to use the platform's built-in storage.",
-    fields: [
-      { key: "url", label: "Project URL", placeholder: "https://xxxxx.supabase.co" },
-      { key: "ref", label: "Project ref (optional)", placeholder: "xxxxx" },
-    ],
-    secretLabel: "Service role key",
-    secretHint: "Stored encrypted and never shown again. Paste it yourself — it is not sent anywhere except your own Supabase.",
-  },
-  {
-    kind: "github",
-    name: "GitHub",
-    blurb: "Push this project to a repository you own, so it has real version control outside the platform.",
-    fields: [
-      { key: "repo", label: "Repository", placeholder: "your-name/your-repo" },
-      { key: "branch", label: "Branch", placeholder: "main" },
-    ],
-    secretLabel: "Personal access token",
-    secretHint: "Needs repo scope. Stored encrypted and never shown again.",
-  },
-];
+let catalogue = [];          // from /api/connectors
+let categories = [];
+let linked = {};             // kind -> saved integration
+let conFilter = "all";       // "all" | "enabled" | a category
+let conQuery = "";
+let conOpen = null;          // the connector being viewed, or null
 
 async function openIntegrations() {
   closeMenu();
-  if (!currentProjectId) {
-    showToast({ kind: "int", title: "Save the project first — integrations are stored against it." });
-    return;
-  }
   $("intPanel").classList.add("open");
   $("intScrim").classList.add("open");
-  await renderIntegrations();
+  conOpen = null;
+  conFilter = "all";
+  conQuery = "";
+  $("conSearch").value = "";
+  await loadConnectors();
+  renderConnectors();
 }
 
 function closeIntegrations() {
@@ -2816,124 +2873,288 @@ function closeIntegrations() {
   $("intScrim").classList.remove("open");
 }
 
-async function renderIntegrations() {
-  const body = $("intBody");
-  body.innerHTML = '<div class="note">Loading…</div>';
-
-  let live = [];
+async function loadConnectors() {
+  if (!catalogue.length) {
+    try {
+      const d = await fetch("/api/connectors").then((r) => r.json());
+      catalogue = d.connectors || [];
+      categories = d.categories || [];
+    } catch { catalogue = []; }
+  }
+  linked = {};
+  if (!currentProjectId) return;
   try {
-    live = await fetch("/api/projects/" + currentProjectId + "/integrations").then((r) => r.json());
-  } catch { /* shown as unlinked below */ }
-  const byKind = {};
-  for (const i of (Array.isArray(live) ? live : [])) byKind[i.kind] = i;
+    const live = await fetch("/api/projects/" + currentProjectId + "/integrations").then((r) => r.json());
+    for (const i of (Array.isArray(live) ? live : [])) linked[i.kind] = i;
+  } catch { /* an unlinked view is the honest fallback */ }
+}
 
-  body.innerHTML = "";
+function tile(c, cls) {
+  const el = document.createElement("span");
+  el.className = "tile" + (cls ? " " + cls : "");
+  el.style.background = c.tint;
+  el.textContent = c.mark;
+  if (c.status === "available") {
+    const pip = document.createElement("span");
+    pip.className = "pip";
+    pip.style.background = linked[c.id] ? "var(--good)" : "var(--faint)";
+    pip.title = linked[c.id] ? "Connected" : "Available — not connected";
+    el.appendChild(pip);
+  }
+  return el;
+}
 
-  // Say plainly what the built-in storage is, so "unlinked" does not
-  // read as "broken".
-  const note = document.createElement("div");
-  note.className = "note";
-  note.innerHTML = icon("shield", "sm") +
-    "<div>Nothing here is required. Unlinked, this project saves to the platform's own storage and works normally. " +
-    "Linking moves the data somewhere you own.</div>";
-  body.appendChild(note);
+function matches(c) {
+  if (conFilter === "enabled" && c.status !== "available") return false;
+  if (conFilter !== "all" && conFilter !== "enabled" && c.category !== conFilter) return false;
+  if (!conQuery) return true;
+  const q = conQuery.toLowerCase();
+  return c.name.toLowerCase().includes(q) || c.blurb.toLowerCase().includes(q);
+}
 
-  for (const spec of INTEGRATIONS) {
-    const cur = byKind[spec.kind];
-    const card = document.createElement("div");
-    card.className = "intCard";
-    card.innerHTML =
-      '<div class="h">' + icon("plug", "sm") +
-      '<span class="nm"></span><span class="st"></span></div><div class="d"></div>';
-    card.querySelector(".nm").textContent = spec.name;
-    const st = card.querySelector(".st");
-    st.textContent = cur ? "Connected" : "Not connected";
-    st.classList.toggle("on", Boolean(cur));
-    card.querySelector(".d").textContent = spec.blurb;
+function renderNav() {
+  const nav = $("conNav");
+  nav.innerHTML = "";
+  const add = (key, label, count) => {
+    const b = document.createElement("button");
+    b.className = conFilter === key ? "on" : "";
+    b.innerHTML = '<span class="n"></span><span class="c"></span>';
+    b.querySelector(".n").textContent = label;
+    b.querySelector(".c").textContent = String(count);
+    b.onclick = () => { conFilter = key; conOpen = null; renderConnectors(); };
+    nav.appendChild(b);
+  };
 
-    for (const f of spec.fields) {
-      const l = document.createElement("label");
-      l.textContent = f.label;
-      const inp = document.createElement("input");
-      inp.type = "text";
-      inp.placeholder = f.placeholder;
-      inp.value = (cur && cur.config && cur.config[f.key]) || "";
-      inp.dataset.field = f.key;
-      card.appendChild(l);
-      card.appendChild(inp);
-    }
+  add("enabled", "Available", catalogue.filter((c) => c.status === "available").length);
+  add("all", "All", catalogue.length);
 
-    const sl = document.createElement("label");
-    sl.textContent = spec.secretLabel + (cur && cur.hasSecret ? " — already saved, leave blank to keep" : "");
-    const sec = document.createElement("input");
-    sec.type = "password";
-    sec.placeholder = cur && cur.hasSecret ? "••••••••" : "Paste it here";
-    sec.autocomplete = "off";
-    sec.dataset.secret = "1";
-    card.appendChild(sl);
-    card.appendChild(sec);
+  const head = document.createElement("div");
+  head.className = "grp";
+  head.textContent = "Categories";
+  nav.appendChild(head);
 
-    const hint = document.createElement("div");
-    hint.className = "d";
-    hint.textContent = spec.secretHint;
-    card.appendChild(hint);
-
-    const acts = document.createElement("div");
-    acts.className = "acts";
-    const save = document.createElement("button");
-    save.className = "primary";
-    setBtn(save, "check", cur ? "Update" : "Connect");
-    save.onclick = () => saveIntegration(spec, card, save);
-    acts.appendChild(save);
-    if (cur) {
-      const dis = document.createElement("button");
-      setBtn(dis, "x", "Disconnect");
-      dis.onclick = () => disconnectIntegration(spec.kind);
-      acts.appendChild(dis);
-    }
-    card.appendChild(acts);
-    body.appendChild(card);
+  for (const cat of categories) {
+    const n = catalogue.filter((c) => c.category === cat).length;
+    if (n) add(cat, cat, n);
   }
 }
 
-async function saveIntegration(spec, card, btn) {
+function renderConnectors() {
+  renderNav();
+  $("intCrumb").textContent = conOpen ? conOpen.name : "";
+  const body = $("intBody");
+  body.innerHTML = "";
+
+  if (conOpen) return renderConnectorDetail(body, conOpen);
+
+  const list = catalogue.filter(matches)
+    // Working ones first — the useful answer to "what can I use now?"
+    .sort((a, b) => (a.status === "available" ? 0 : 1) - (b.status === "available" ? 0 : 1)
+      || a.name.localeCompare(b.name));
+
+  if (!list.length) {
+    body.innerHTML = '<div class="empty2">Nothing matches that.</div>';
+    return;
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "conGrid";
+  for (const c of list) {
+    const card = document.createElement("button");
+    card.className = "conCard";
+    card.appendChild(tile(c));
+    const bd = document.createElement("div");
+    bd.className = "bd";
+    const nm = document.createElement("div");
+    nm.className = "nm";
+    nm.appendChild(document.createTextNode(c.name));
+    const pill = document.createElement("span");
+    pill.className = "pill" + (linked[c.id] ? " ok" : "");
+    pill.textContent = linked[c.id] ? "Connected" : c.status === "available" ? "Available" : "Soon";
+    nm.appendChild(pill);
+    bd.appendChild(nm);
+    const bl = document.createElement("div");
+    bl.className = "bl";
+    bl.textContent = c.blurb;
+    bd.appendChild(bl);
+    card.appendChild(bd);
+    card.onclick = () => { conOpen = c; renderConnectors(); };
+    grid.appendChild(card);
+  }
+  body.appendChild(grid);
+}
+
+function renderConnectorDetail(body, c) {
+  const back = document.createElement("button");
+  back.className = "back";
+  setBtn(back, "chevron-down", "All connectors");
+  back.querySelector("svg").style.transform = "rotate(90deg)";
+  back.onclick = () => { conOpen = null; renderConnectors(); };
+  body.appendChild(back);
+
+  const head = document.createElement("div");
+  head.className = "conHead";
+  head.appendChild(tile(c));
+  const t = document.createElement("div");
+  t.innerHTML = "<h3></h3><div class='sub'></div>";
+  t.querySelector("h3").textContent = c.name;
+  t.querySelector(".sub").textContent =
+    linked[c.id] ? "Connected" : c.status === "available" ? "Available" : "Coming soon";
+  head.appendChild(t);
+  body.appendChild(head);
+
+  const lead = document.createElement("div");
+  lead.className = "sect";
+  lead.textContent = "Overview";
+  body.appendChild(lead);
+  const p = document.createElement("div");
+  p.className = "lead";
+  p.textContent = c.blurb;
+  body.appendChild(p);
+
+  if (c.status !== "available") {
+    const note = document.createElement("div");
+    note.className = "note";
+    note.innerHTML = icon("alert", "sm") +
+      "<div><strong>Not built yet.</strong> This one is catalogued and planned, " +
+      "but linking it does nothing today. It is listed so you can see where this is " +
+      "going — and so the link below is at least useful now.</div>";
+    body.appendChild(note);
+    if (c.url) {
+      const a = document.createElement("a");
+      a.href = c.url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.className = "back";
+      a.style.display = "inline-flex";
+      a.style.alignItems = "center";
+      a.style.gap = "6px";
+      a.style.textDecoration = "none";
+      a.innerHTML = icon("external-link", "sm");
+      a.appendChild(document.createTextNode("Visit " + c.name));
+      body.appendChild(a);
+    }
+    return;
+  }
+
+  const cs = document.createElement("div");
+  cs.className = "sect";
+  cs.textContent = "Connection";
+  body.appendChild(cs);
+
+  if (!c.fields) {
+    const d = document.createElement("div");
+    d.className = "lead";
+    d.textContent = "Built in — nothing to configure. It is available to every project already.";
+    body.appendChild(d);
+    return;
+  }
+
+  if (!currentProjectId) {
+    body.innerHTML += '<div class="empty2">Save this project first — a connection is stored against it.</div>';
+    return;
+  }
+
+  const cur = linked[c.id];
+  const card = document.createElement("div");
+  card.className = "intCard";
+
+  for (const f of c.fields) {
+    const l = document.createElement("label");
+    l.textContent = f.label;
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.placeholder = f.placeholder;
+    inp.value = (cur && cur.config && cur.config[f.key]) || "";
+    inp.dataset.field = f.key;
+    card.appendChild(l);
+    card.appendChild(inp);
+  }
+
+  const sl = document.createElement("label");
+  sl.textContent = c.secretLabel + (cur && cur.hasSecret ? " — saved, leave blank to keep" : "");
+  const sec = document.createElement("input");
+  sec.type = "password";
+  sec.placeholder = cur && cur.hasSecret ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : "Paste it here";
+  sec.autocomplete = "off";
+  sec.dataset.secret = "1";
+  card.appendChild(sl);
+  card.appendChild(sec);
+
+  const hint = document.createElement("div");
+  hint.className = "d";
+  hint.textContent = c.secretHint;
+  card.appendChild(hint);
+
+  const acts = document.createElement("div");
+  acts.className = "acts";
+  const save = document.createElement("button");
+  save.className = "primary";
+  setBtn(save, "check", cur ? "Update" : "Connect");
+  save.onclick = () => saveConnector(c, card, save);
+  acts.appendChild(save);
+  if (cur) {
+    const dis = document.createElement("button");
+    setBtn(dis, "x", "Disconnect");
+    dis.onclick = () => disconnectConnector(c.id);
+    acts.appendChild(dis);
+  }
+  card.appendChild(acts);
+  body.appendChild(card);
+
+  if (c.url) {
+    const a = document.createElement("a");
+    a.href = c.url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.style.cssText = "display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);text-decoration:none;margin-top:6px";
+    a.innerHTML = icon("external-link", "sm");
+    a.appendChild(document.createTextNode(c.name + " docs"));
+    body.appendChild(a);
+  }
+}
+
+async function saveConnector(c, card, btn) {
   const config = {};
   for (const inp of card.querySelectorAll("input[data-field]")) {
     config[inp.dataset.field] = inp.value.trim();
   }
   const secretInput = card.querySelector("input[data-secret]");
-  const secret = secretInput.value;
-
   btn.disabled = true;
-  setBtn(btn, "check", "Saving…");
+  setBtn(btn, "check", "Saving\u2026");
   try {
-    const r = await fetch(
-      "/api/projects/" + currentProjectId + "/integrations/" + spec.kind,
-      {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ config, secret }),
-      }
-    );
+    const r = await fetch("/api/projects/" + currentProjectId + "/integrations/" + c.id, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ config, secret: secretInput.value }),
+    });
     if (!r.ok) throw new Error(((await r.json()) || {}).error || "Could not save");
     secretInput.value = "";   // never leave a secret sitting in the DOM
-    await renderIntegrations();
+    await loadConnectors();
+    renderConnectors();
   } catch (err) {
     btn.disabled = false;
     setBtn(btn, "alert", "Failed");
-    showToast({ kind: "int", title: spec.name + " could not be linked", detail: err.message });
+    showToast({ kind: "int", title: c.name + " could not be linked", detail: err.message });
   }
 }
 
-async function disconnectIntegration(kind) {
-  if (!confirm("Disconnect this integration? The stored credential is deleted.")) return;
+async function disconnectConnector(kind) {
+  if (!confirm("Disconnect this? The stored credential is deleted.")) return;
   try {
     await fetch("/api/projects/" + currentProjectId + "/integrations/" + kind, { method: "DELETE" });
-    await renderIntegrations();
+    await loadConnectors();
+    renderConnectors();
   } catch (err) {
     showToast({ kind: "int", title: "Could not disconnect", detail: err.message });
   }
 }
+
+$("conSearch").oninput = (e) => {
+  conQuery = e.target.value.trim();
+  conOpen = null;
+  renderConnectors();
+};
 
 $("mIntegrations").onclick = openIntegrations;
 $("intClose").onclick = closeIntegrations;
