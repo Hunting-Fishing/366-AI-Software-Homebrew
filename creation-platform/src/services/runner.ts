@@ -1,14 +1,19 @@
-// Live preview runner: executes a generated Python (Flask) app
-// locally and serves it to the browser — "web based, not just
-// download a ZIP". One preview runs at a time; starting a new
-// one stops the old one.
+// Live preview runner. One preview runs at a time; starting a new one
+// stops the old one.
 //
-// SECURITY NOTE (documented in docs/PHASES.md): this runs
-// AI-generated code on this machine. That's acceptable for our
-// own in-house use with our own generations. Before offering
-// this to outside users, it MUST move into real sandboxing
-// (Docker/Firecracker — Phase 3). Do not expose this server to
-// the public internet as-is.
+// Two very different paths:
+//
+//   React / mobile   served from memory by services/webPreview.ts.
+//                    No install, no subprocess, ready instantly.
+//   Python           still spawns a real Flask process, because there
+//                    is no way to run Python in a browser.
+//
+// SECURITY NOTE (documented in docs/PHASES.md): the Python path runs
+// AI-generated code on this machine. That's acceptable for our own
+// in-house use with our own generations. Before offering this to
+// outside users, it MUST move into real sandboxing (Docker/Firecracker
+// — Phase 3). The React path executes only in the user's own browser,
+// so it carries none of that risk.
 
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
@@ -16,6 +21,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import type { ProjectFile } from "../lib/files.js";
+import { webPreview } from "./webPreview.js";
 
 export function pythonCmd(): string | null {
   for (const cmd of ["python3", "python"]) {
@@ -131,13 +137,22 @@ export class PreviewRunner {
     const id = ++this.runId;
     this.stop();
     this.runId = id; // stop() must not invalidate the run we just claimed
-    this.state = vite ? "installing" : "starting";
-    this.message = vite
-      ? "Installing packages — this takes about a minute the first time"
-      : "Starting the app";
     this.startedAt = Date.now();
 
-    const work = vite ? this.startReact(files, id) : this.start(files);
+    // React and mobile projects are served straight from memory — the
+    // TypeScript compiler handles JSX and an import map handles the
+    // packages. Nothing to install, nothing to spawn, so it is ready
+    // immediately and cannot exhaust a small container's memory.
+    if (vite) {
+      webPreview.load(files);
+      this.state = "ready";
+      this.message = "";
+      return this.status();
+    }
+
+    this.state = "starting";
+    this.message = "Starting the app";
+    const work = this.start(files);
     work
       .then(() => {
         if (id !== this.runId) return; // superseded
@@ -305,6 +320,7 @@ export class PreviewRunner {
     this.state = "idle";
     this.message = "";
     this.runId++; // any in-flight run is now superseded
+    webPreview.clear();
     if (this.dir) {
       try {
         fs.rmSync(this.dir, { recursive: true, force: true });

@@ -40,22 +40,24 @@ test("begin() returns immediately — it must not await the boot", () => {
   previewRunner.stop();
 });
 
-test("a Vite project reports the install phase first", () => {
+test("a Vite project is ready immediately — nothing to install any more", () => {
   previewRunner.stop();
-  const s = previewRunner.begin(
-    VITE,
-    true
-  );
-  assert.equal(s.state, "installing");
-  assert.match(s.message ?? "", /packages/i, "the phase text is what the user reads while waiting");
+  const s = previewRunner.begin(VITE, true);
+  // Was "installing" when React meant npm install + a Vite subprocess.
+  // Now the project is served from memory, so there is nothing to wait
+  // for. Keeping the old assertion would be pinning a bug in place.
+  assert.equal(s.state, "ready");
+  assert.equal(s.url, "/live/");
   previewRunner.stop();
 });
 
-test("elapsed time is reported while working, so the UI can count up", () => {
+test("elapsed time is reported while a slow preview works, for the counter", () => {
   previewRunner.stop();
-  previewRunner.begin(VITE, true);
+  previewRunner.begin(FLASK, false); // python still spawns a real process
   const s = previewRunner.status();
-  assert.equal(typeof s.elapsedMs, "number");
+  if (s.state === "starting") {
+    assert.equal(typeof s.elapsedMs, "number");
+  }
   previewRunner.stop();
 });
 
@@ -80,9 +82,9 @@ test("starting a second preview supersedes the first", () => {
   previewRunner.stop();
   previewRunner.begin(VITE, true);
   const second = previewRunner.begin(FLASK, false);
-  // The Vite run is abandoned; the state reflects the Flask run only.
+  // The React project is unloaded; the state reflects the Flask run only.
   assert.equal(second.state, "starting");
-  assert.doesNotMatch(second.message ?? "", /packages/i,
-    "a superseded run must not keep writing its phase over the new one");
+  assert.equal(second.url, undefined,
+    "a superseded run must not leave its url behind");
   previewRunner.stop();
 });

@@ -534,7 +534,6 @@ async function runLivePreview(opts) {
   let phaseStart = Date.now();
 
   try {
-    showBoot("installing", 0, "Preparing your app…", "");
     const res = await fetch("/api/preview", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -542,6 +541,10 @@ async function runLivePreview(opts) {
     });
     const started = await readJson(res);
     if (!res.ok && res.status !== 202) throw new Error(started.error || "Preview failed");
+    // React projects are served from memory and come back ready in one
+    // round trip. Flashing a progress bar for 200ms looks broken, so
+    // only show it when there is actually something to wait for.
+    if (started.state !== "ready") showBoot("installing", 0, "Preparing your app…", "");
 
     // The server works in the background; poll rather than holding a
     // request open. See src/routes/preview.ts for why that matters.

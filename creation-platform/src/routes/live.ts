@@ -21,6 +21,7 @@ import { Router, type Request, type Response } from "express";
 import http from "node:http";
 import type { Duplex } from "node:stream";
 import { previewRunner, LIVE_PATH } from "../services/runner.js";
+import { webPreview } from "../services/webPreview.js";
 
 export const liveRouter = Router();
 
@@ -31,6 +32,14 @@ export function upstreamPath(originalUrl: string): string {
 }
 
 liveRouter.use(LIVE_PATH, (req: Request, res: Response) => {
+  // React and mobile projects are held in memory and transpiled on the
+  // way out — no process to proxy to. See services/webPreview.ts.
+  if (webPreview.loaded) {
+    const out = webPreview.serve(upstreamPath(req.originalUrl), LIVE_PATH);
+    res.status(out.status).type(out.contentType).send(out.body);
+    return;
+  }
+
   const port = previewRunner.port();
   if (!port) {
     res.status(503).type("html").send(
