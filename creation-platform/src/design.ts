@@ -87,6 +87,13 @@ COLOUR
 - Never more than one accent. Rainbow UIs read as amateur.
 - Body text at high contrast, secondary text one step down (text-slate-400 on dark, text-slate-600 on light). Never grey-on-grey.
 
+ICONS — never use emoji as an icon
+- Emoji (📊 📦 ⚖️ 🚀) are drawn by the operating system's own bitmap font. They cannot take your colour, cannot match your type size, and look completely different on Windows, macOS, Android and iOS. A UI iconed with emoji reads as unfinished no matter how good the rest is.
+- Use inline SVG instead: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">…</svg>. stroke="currentColor" is the important part — the icon then always matches the text beside it.
+- Draw simple 24x24 stroked shapes in that style (the Lucide/Feather look): a few paths, circles and rects. A receipt is a rounded rect with three lines in it; a chart is three bars; a book is two curved paths. Do not attempt detailed illustration.
+- Icons are decorative next to a label, so add aria-hidden="true". An icon-only button needs aria-label.
+- Emoji are fine inside sample content a user would actually type (a note, a message). They are not fine as interface furniture.
+
 DEPTH AND SHAPE
 - Cards: rounded-xl, a subtle border (border border-slate-800 / border-slate-200), and either a soft shadow OR a border — not both heavily.
 - Buttons: rounded-lg, px-4 py-2, a clear hover state, and a visible focus ring. Primary is filled with the accent; secondary is bordered and transparent.
@@ -127,6 +134,7 @@ DESIGN PRINCIPLES — this is what separates a real product from a school projec
 - A type scale, not arbitrary sizes. Headings semibold, not black.
 - Empty states get a line of copy and the action that fills them — never a blank rectangle.
 - Loading states are visible. Interactive elements have pressed and focus states.
+- Never emoji as icons. Use the toolkit's own icon set, drawn in the current text colour so it matches what sits beside it. Emoji are OS bitmaps: wrong colour, wrong size, different on every device.
 - Realistic seeded sample data so the UI looks alive on first run. Never "Item 1 / Item 2".
 - Real labels: "Add expense", not "Submit".
 - Touch targets at least 44px. Text contrast at least 4.5:1.
