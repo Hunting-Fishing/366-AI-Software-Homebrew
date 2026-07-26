@@ -430,6 +430,18 @@ export const FAILURES: FailureMode[] = [
     status: "detected",
   },
 
+  {
+    id: "preview-blocked-cross-origin",
+    area: "platform",
+    title: "The preview could not load its own files",
+    signature: /blocked by CORS policy|from origin 'null'|ERR_FAILED 401/i,
+    cause:
+      "The preview frame is sandboxed without allow-same-origin so that generated code cannot reach the platform. That gives it an opaque origin ('null'), which sends no cookies and makes every request to /live a cross-origin one — so cookie auth returned 401 and the browser blocked the module fetch. Tightening the sandbox and keeping cookie auth are mutually exclusive; the resolution is a per-run token in the path (/live/<token>/) which is the credential instead, letting the route be public and CORS-open while the sandbox stays shut.",
+    fix: "Nothing to do — the preview URL carries its own token. If this appears, the token was stale: rebuild, which issues a new one.",
+    status: "handled",
+    autoFixable: true,
+  },
+
   // ── Partial failures ─────────────────────────────────────
   // The dangerous category: the run reports success and something is
   // quietly missing.

@@ -14,7 +14,7 @@ Every entry has a status:
 - **Detected** — recognised and explained, but someone still has to act.
 - **Open** — known and written down. Nothing stops it yet. **This is the work queue.**
 
-Currently: **12 handled**, **23 detected**, **6 open** — 41 total.
+Currently: **13 handled**, **23 detected**, **6 open** — 42 total.
 
 ## Still open
 
@@ -398,6 +398,16 @@ Our own server, storage or deploy path.
 **Fix.** Check the traceback's last line, fix that file, and rebuild.
 
 **Recognised by.** `No module named|Traceback \(most recent call last\)|app\.py`
+
+#### The preview could not load its own files
+
+**Handled** · fixed automatically · `preview-blocked-cross-origin`
+
+**Cause.** The preview frame is sandboxed without allow-same-origin so that generated code cannot reach the platform. That gives it an opaque origin ('null'), which sends no cookies and makes every request to /live a cross-origin one — so cookie auth returned 401 and the browser blocked the module fetch. Tightening the sandbox and keeping cookie auth are mutually exclusive; the resolution is a per-run token in the path (/live/<token>/) which is the credential instead, letting the route be public and CORS-open while the sandbox stays shut.
+
+**Fix.** Nothing to do — the preview URL carries its own token. If this appears, the token was stale: rebuild, which issues a new one.
+
+**Recognised by.** `blocked by CORS policy|from origin 'null'|ERR_FAILED 401`
 
 ## Partial failures
 

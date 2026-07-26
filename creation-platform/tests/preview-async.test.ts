@@ -47,7 +47,8 @@ test("a Vite project is ready immediately — nothing to install any more", () =
   // Now the project is served from memory, so there is nothing to wait
   // for. Keeping the old assertion would be pinning a bug in place.
   assert.equal(s.state, "ready");
-  assert.equal(s.url, "/live/");
+  // The path carries a per-run token now — see preview-origin.test.ts.
+  assert.match(s.url!, /^\/live\/[0-9a-f]{32}\/$/);
   previewRunner.stop();
 });
 

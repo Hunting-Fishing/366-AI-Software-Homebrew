@@ -25,17 +25,57 @@ import { webPreview } from "../services/webPreview.js";
 
 export const liveRouter = Router();
 
+/**
+ * Split /live/<token>/rest into its two parts.
+ *
+ * The token exists because the preview iframe is sandboxed without
+ * allow-same-origin — see services/runner.ts. An opaque origin sends
+ * no cookies, so cookie auth cannot work here; the token in the path
+ * is the credential instead.
+ */
+export function splitLive(originalUrl: string): { token: string; path: string } {
+  const rest = originalUrl.slice(LIVE_PATH.length).replace(/^\//, "");
+  const slash = rest.indexOf("/");
+  const token = slash === -1 ? rest : rest.slice(0, slash);
+  const path = slash === -1 ? "/" : rest.slice(slash);
+  // A query string on the bare prefix (/live/<token>?t=…) still means
+  // the index, and the cache-buster must not be read as a token.
+  const q = token.indexOf("?");
+  return q === -1 ? { token, path: path || "/" } : { token: token.slice(0, q), path: "/" };
+}
+
 /** Strip the /live prefix — the preview process knows nothing about it. */
 export function upstreamPath(originalUrl: string): string {
-  const stripped = originalUrl.slice(LIVE_PATH.length);
-  return stripped === "" ? "/" : stripped;
+  return splitLive(originalUrl).path;
 }
 
 liveRouter.use(LIVE_PATH, (req: Request, res: Response) => {
+  const { token, path: subPath } = splitLive(req.originalUrl);
+
+  if (!previewRunner.accepts(token)) {
+    res.status(404).type("text").send("No such preview.");
+    return;
+  }
+
+  // The frame is cross-origin by design, so every asset it pulls —
+  // modules, stylesheets, images — is a CORS request. Without these
+  // headers the browser blocks the module fetch and the app never
+  // runs, which is precisely what tightening the sandbox caused.
+  res.setHeader("access-control-allow-origin", "*");
+  res.setHeader("cross-origin-resource-policy", "cross-origin");
+  if (req.method === "OPTIONS") {
+    res.setHeader("access-control-allow-methods", "GET, HEAD, OPTIONS");
+    res.setHeader("access-control-allow-headers", "*");
+    res.status(204).end();
+    return;
+  }
+
   // React and mobile projects are held in memory and transpiled on the
   // way out — no process to proxy to. See services/webPreview.ts.
   if (webPreview.loaded) {
-    const out = webPreview.serve(upstreamPath(req.originalUrl), LIVE_PATH);
+    // The base must carry the token too, or every URL the page
+    // generates points at a prefix that no longer validates.
+    const out = webPreview.serve(subPath, previewRunner.base());
     res.status(out.status).type(out.contentType).send(out.body);
     return;
   }
@@ -85,6 +125,14 @@ liveRouter.use(LIVE_PATH, (req: Request, res: Response) => {
 export function attachLiveWebSocketProxy(server: http.Server): void {
   server.on("upgrade", (req, socket: Duplex, head: Buffer) => {
     if (!req.url?.startsWith(LIVE_PATH)) return;
+
+    // The upgrade bypasses Express, so it bypasses the token check in
+    // the route above too. Without this it would be the one way into a
+    // preview that never proves it is allowed to be there.
+    if (!previewRunner.accepts(splitLive(req.url).token)) {
+      socket.destroy();
+      return;
+    }
 
     const port = previewRunner.port();
     if (!port) {

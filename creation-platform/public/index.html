@@ -677,6 +677,10 @@ let targetsInfo = [];    // from /api/health
 let imageProviders = []; // from /api/health
 let healthInfo = {};     // full /api/health payload
 let lastKeyframes = [];  // [{id, b64, videoPrompt}] after keyframe generation
+// The URL the running preview is served from, token included. Only the
+// server knows the token, so this must come from the status response
+// rather than being assembled here.
+let liveUrl = "";
 
 // Movie style presets: injected into movie-plan prompts and shot lists.
 const MOVIE_STYLES = {
@@ -1486,6 +1490,9 @@ async function runLivePreview(opts) {
     // the storage shim in the preview does that without the hole.
     iframe.setAttribute("sandbox", "allow-scripts allow-forms");
     iframe.removeAttribute("srcdoc");
+    // Remember it: /live now carries a per-run token, so "/live/" on
+    // its own is a 404 and the pop-out button cannot construct the URL.
+    liveUrl = data.url;
     iframe.src = data.url + "?t=" + Date.now();
     booting = false;
     showTab("preview");
@@ -2329,7 +2336,7 @@ $("reloadBtn").onclick = () => {
 
 $("popoutBtn").onclick = () => {
   if (!project) return;
-  if (canPreview(project)) { window.open("/live/?t=" + Date.now(), "_blank"); return; }
+  if (canPreview(project) && liveUrl) { window.open(liveUrl + "?t=" + Date.now(), "_blank"); return; }
   if (isWeb(project)) {
     // Single-file targets live in a srcdoc, so there is no URL to open —
     // hand the browser a blob instead.

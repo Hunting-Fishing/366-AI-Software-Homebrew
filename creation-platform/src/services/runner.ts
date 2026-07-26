@@ -18,6 +18,7 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
 import net from "node:net";
+import { randomBytes } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import type { ProjectFile } from "../lib/files.js";
@@ -84,6 +85,26 @@ function waitForPort(port: number, tries = 30, delayMs = 500): Promise<boolean> 
 export const LIVE_PATH = "/live";
 
 /**
+ * A random path segment issued per preview run: /live/<token>/…
+ *
+ * WHY A TOKEN AND NOT THE SESSION COOKIE
+ * The preview iframe is sandboxed WITHOUT allow-same-origin, because it
+ * runs freshly generated code and must not be able to reach the
+ * platform around it. That gives the frame an opaque origin, and an
+ * opaque origin sends no cookies — so /live answered 401 and the module
+ * fetch was blocked by CORS. (Both appeared the moment the sandbox was
+ * tightened, which is how the trade-off surfaced.)
+ *
+ * Putting an unguessable token in the path resolves it without giving
+ * anything up: the token is the credential, so the route can be public
+ * and CORS-open, while the sandbox stays shut. This is the same shape
+ * CodeSandbox and StackBlitz use, except they spend a subdomain on it.
+ */
+function newToken(): string {
+  return randomBytes(16).toString("hex");
+}
+
+/**
  * Starting a preview takes 60–120 seconds for React: npm install, then
  * waiting for Vite to bind a port. It used to happen inside the
  * POST /api/preview request, which meant the browser held one HTTP
@@ -118,11 +139,23 @@ export class PreviewRunner {
   private startedAt = 0;
   /** Incremented on every begin(), so a superseded run cannot report back. */
   private runId = 0;
+  /** Rotated on every begin(), so a stale frame cannot read a new preview. */
+  private tok = newToken();
+
+  /** The path prefix this run is served under, token included. */
+  base(): string {
+    return LIVE_PATH + "/" + this.tok;
+  }
+
+  /** Constant-time-ish check that a request carries the current token. */
+  accepts(token: string): boolean {
+    return token.length === this.tok.length && token === this.tok;
+  }
 
   status(): PreviewStatus {
     const s: PreviewStatus = { state: this.state };
     if (this.message) s.message = this.message;
-    if (this.state === "ready") s.url = LIVE_PATH + "/";
+    if (this.state === "ready") s.url = this.base() + "/";
     if (this.state === "installing" || this.state === "starting") {
       s.elapsedMs = Date.now() - this.startedAt;
     }
@@ -138,6 +171,7 @@ export class PreviewRunner {
     this.stop();
     this.runId = id; // stop() must not invalidate the run we just claimed
     this.startedAt = Date.now();
+    this.tok = newToken();
 
     // React and mobile projects are served straight from memory — the
     // TypeScript compiler handles JSX and an import map handles the
@@ -219,7 +253,7 @@ export class PreviewRunner {
         : "";
       throw new Error("The app failed to start.\n" + detail + hint);
     }
-    return { url: LIVE_PATH + "/" };
+    return { url: this.base() + "/" };
   }
 
   /** Live preview for React (Vite) projects: npm install, then
@@ -288,7 +322,7 @@ export class PreviewRunner {
         "--port", String(port),
         "--strictPort",
         "--host", "127.0.0.1",
-        "--base", LIVE_PATH + "/",
+        "--base", this.base() + "/",
       ],
       { cwd: dir }
     );
@@ -304,7 +338,7 @@ export class PreviewRunner {
       this.stop();
       throw new Error("The React dev server failed to start.\n" + detail);
     }
-    return { url: LIVE_PATH + "/" };
+    return { url: this.base() + "/" };
   }
 
   stop(): void {
