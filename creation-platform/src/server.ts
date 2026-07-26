@@ -20,6 +20,7 @@ import { imageRouter } from "./routes/image.js";
 import { publishRouter } from "./routes/publish.js";
 import { videoRouter } from "./routes/video.js";
 import { availableVideoProviders } from "./providers/videos.js";
+import { FAILURES } from "./failures.js";
 import { ffmpegAvailable, MEDIA_DIR } from "./services/studio.js";
 import { authMiddleware, loginHandler } from "./middleware/auth.js";
 import { authRouter } from "./routes/auth.js";
@@ -66,6 +67,23 @@ app.get("/api/health", (_req, res) => {
     videoProviders: availableVideoProviders(),
     ffmpeg: ffmpegAvailable(),
   });
+});
+
+// The failure catalogue, so the browser can name a raw error rather
+// than echoing a stack trace at someone who did not write the code.
+// Regexes do not survive JSON, so they go over as source + flags.
+app.get("/api/failures", (_req, res) => {
+  res.json(
+    FAILURES.map((f) => ({
+      id: f.id,
+      area: f.area,
+      title: f.title,
+      cause: f.cause,
+      fix: f.fix,
+      status: f.status,
+      signature: f.signature ? { source: f.signature.source, flags: f.signature.flags } : null,
+    }))
+  );
 });
 
 app.use(generateRouter);

@@ -1981,20 +1981,54 @@ window.addEventListener("message", (e) => {
 
   const raw = String(d.message || "").slice(0, 600);
   const where = d.source ? String(d.source).replace(/^.*\/live\//, "") : "";
+  const known = classifyFailure(raw);
+
   showToast({
     kind: "preview",
-    title: "The preview hit an error",
-    detail: raw + (where ? "\n  at " + where + (d.line ? ":" + d.line : "") : ""),
-    // Handing the agent the verbatim message matters more than any
-    // wording around it — that string names the file and the symbol.
+    // A named cause beats an echoed stack trace. "A file imports
+    // something its source never exports" tells you what to look for;
+    // "does not provide an export named 'IconUtensils'" tells you what
+    // the engine said.
+    title: known ? known.title : "The preview hit an error",
+    detail:
+      (known ? known.cause + "\n\n" : "") + raw +
+      (where ? "\n  at " + where + (d.line ? ":" + d.line : "") : ""),
+    // The verbatim message still goes to the agent — it names the file
+    // and the symbol, which no paraphrase of ours preserves.
     fix:
       "The preview is failing with this error:\n\n" + raw +
       (where ? "\n(in " + where + (d.line ? " line " + d.line : "") + ")" : "") +
-      "\n\nFind the cause and fix it. Check that every symbol imported " +
-      "from a module is actually exported by that module, with the " +
-      "exact same name. Change only what is needed for this error.",
+      (known
+        ? "\n\nThis is a known failure mode: " + known.title + ".\n" +
+          known.cause + "\n\nWhat to do: " + known.fix
+        : "\n\nFind the cause and fix it.") +
+      "\n\nChange only what is needed for this error.",
   });
 });
+
+// ── Failure catalogue ───────────────────────────────────────
+// Fetched once from the server so the list lives in exactly one place
+// (src/failures.ts) rather than being duplicated here and drifting.
+let failureCatalogue = [];
+
+fetch("/api/failures")
+  .then((r) => r.json())
+  .then((list) => {
+    failureCatalogue = (Array.isArray(list) ? list : []).map((f) => ({
+      ...f,
+      re: f.signature ? new RegExp(f.signature.source, f.signature.flags) : null,
+    }));
+  })
+  .catch(() => { /* an unnamed error still shows its raw text */ });
+
+/** First match wins — entries are ordered most specific first. */
+function classifyFailure(message) {
+  if (!message) return null;
+  for (const f of failureCatalogue) {
+    if (f.re && f.re.test(message)) return f;
+  }
+  return null;
+}
 
 // ── Build history ───────────────────────────────────────────
 // Three things Jordi asked for turn out to be three readings of one

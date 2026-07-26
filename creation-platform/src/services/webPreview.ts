@@ -130,11 +130,41 @@ export class WebPreview {
   }
 
   private entryModule(): string | null {
-    for (const e of SCRIPT_EXT) {
-      if (this.paths.has("src/main" + e)) return "src/main" + e;
-      if (this.paths.has("src/index" + e)) return "src/index" + e;
+    // Ordered by how likely each is to be the real entry. The list was
+    // src/main.* and src/index.* only, so a project whose entry sat at
+    // the repo root — or that named it App — got "No entry module" and
+    // a 500, which reads as a platform fault rather than a naming one.
+    const bases = ["src/main", "src/index", "main", "index", "src/App", "src/app"];
+    for (const b of bases) {
+      for (const e of SCRIPT_EXT) {
+        if (this.paths.has(b + e)) return b + e;
+      }
+    }
+    // Last resort: whatever actually mounts a React root. A file that
+    // calls createRoot IS the entry, whatever it happens to be called.
+    for (const [path, content] of this.files) {
+      if (!SCRIPT_EXT.some((e) => path.endsWith(e))) continue;
+      if (/createRoot\s*\(|ReactDOM\.render\s*\(/.test(content)) return path;
     }
     return null;
+  }
+
+  /**
+   * The element id the app expects to mount into.
+   *
+   * The served page used to hardcode <div id="root">. An entry doing
+   * getElementById("app") then found null, and React threw "Target
+   * container is not a DOM element" — a confusing error for what is
+   * really a naming mismatch. Read the id the code actually asks for.
+   */
+  private mountId(): string {
+    for (const [path, content] of this.files) {
+      if (!SCRIPT_EXT.some((e) => path.endsWith(e))) continue;
+      const m = /getElementById\(\s*["'`]([\w-]+)["'`]\s*\)/.exec(content);
+      if (m?.[1]) return m[1];
+    }
+    const html = /<div[^>]*id=["']([\w-]+)["']/.exec(this.files.get("index.html") ?? "");
+    return html?.[1] ?? "root";
   }
 
   private indexHtml(base: string): ServedFile {
@@ -177,6 +207,7 @@ export class WebPreview {
 
     const original = this.files.get("index.html") ?? "";
     const title = /<title>([^<]*)<\/title>/.exec(original)?.[1] ?? "Preview";
+    const mount = this.mountId();
 
     const links = this.stylesheets()
       .map((p) => `<link rel="stylesheet" href="${base}/${p}">`)
@@ -197,9 +228,51 @@ ${TAILWIND_CDN}
   ${links}
 </head>
 <body>
-<div id="root"></div>
+<div id="${mount}"></div>
+<script>
+// ── Storage shim ──────────────────────────────────────────
+// Runs BEFORE the app, because the app reads storage while
+// initialising its state.
+//
+// The preview frame is sandboxed without allow-same-origin, which
+// gives it an opaque origin — and in an opaque origin localStorage
+// does not return null, it THROWS. Every generated app that persists
+// anything therefore died on its first render, and because that throw
+// happened inside a useState initialiser it surfaced as an unrelated
+// React error.
+//
+// Weakening the sandbox would fix it and is the wrong trade: this
+// frame runs freshly generated code and must not be able to reach the
+// platform around it. So storage gets shimmed instead. In preview it
+// is in-memory; once the app is deployed to its own origin the real
+// thing takes over, unchanged.
+(function () {
+  function works(name) {
+    try { var s = window[name]; s.setItem("__p", "1"); s.removeItem("__p"); return true; }
+    catch (e) { return false; }
+  }
+  function shim() {
+    var m = {};
+    return {
+      getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },
+      setItem: function (k, v) { m[k] = String(v); },
+      removeItem: function (k) { delete m[k]; },
+      clear: function () { m = {}; },
+      key: function (i) { return Object.keys(m)[i] != null ? Object.keys(m)[i] : null; },
+      get length() { return Object.keys(m).length; },
+    };
+  }
+  ["localStorage", "sessionStorage"].forEach(function (name) {
+    if (works(name)) return;
+    try {
+      Object.defineProperty(window, name, { value: shim(), configurable: true, writable: true });
+    } catch (e) { /* nothing more we can do; the app will see the original throw */ }
+  });
+})();
+</script>
 <script type="module" src="${base}/${entry}"></script>
 <script>
+// ── Failure reporting ─────────────────────────────────────
 // Errors here are the single most common way a build "looks broken".
 // A missing export or a typo'd import throws before anything renders,
 // so the user sees a blank frame and has no idea why.
@@ -210,24 +283,30 @@ ${TAILWIND_CDN}
 // Without (2) the message is trapped in an iframe the parent cannot
 // read, and the user has to retype the error by hand.
 (function () {
-  var reported = false;
+  var MOUNT = ${JSON.stringify(mount)};
+  var settled = false;
+
+  function send(payload) {
+    try { parent.postMessage(payload, "*"); } catch (e) { /* no parent */ }
+  }
+
   function report(message, source, line) {
-    if (reported) return;   // one error, not a cascade of consequences
-    reported = true;
+    if (settled) return;   // one verdict per load, not a cascade
+    settled = true;
     var text = String(message || "Unknown error");
     document.body.insertAdjacentHTML("afterbegin",
       '<pre style="margin:0;padding:14px;background:#3a1d24;color:#ff9db0;' +
       'font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap">' +
       text.replace(/[<>&]/g, "") + "</pre>");
-    try {
-      parent.postMessage({
-        __preview: "error",
-        message: text,
-        source: source || "",
-        line: line || 0,
-      }, "*");
-    } catch (e) { /* no parent, or a stricter sandbox — the banner stands alone */ }
+    send({ __preview: "error", message: text, source: source || "", line: line || 0 });
   }
+
+  function ok() {
+    if (settled) return;
+    settled = true;
+    send({ __preview: "ok" });
+  }
+
   window.addEventListener("error", function (e) {
     report(e.message, e.filename, e.lineno);
   });
@@ -237,22 +316,47 @@ ${TAILWIND_CDN}
     var r = e.reason;
     report(r && r.message ? r.message : r, "", 0);
   });
-  // Nothing thrown and nothing rendered means a module never evaluated.
-  // Say so rather than showing an empty white rectangle.
-  window.addEventListener("load", function () {
-    setTimeout(function () {
-      var root = document.getElementById("root");
-      if (!reported && root && root.children.length === 0) {
-        report("Nothing rendered. The entry module loaded but produced no output — check that the root component is exported and actually returns markup.", "", 0);
-      }
-    }, 1500);
+
+  // ── Did it render? ──
+  //
+  // This check previously fired 1.5s after load and looked only at
+  // #root. Both were wrong. Packages are fetched from a CDN at
+  // runtime, and a cold fetch of react, react-dom and a chart library
+  // routinely takes longer than that — so a perfectly healthy app
+  // that was still downloading got told it had rendered nothing.
+  // Reporting a false failure is worse than reporting none: it sends
+  // you looking for a bug that does not exist.
+  //
+  // So: watch for the first DOM mutation and declare success the
+  // moment anything appears, and only give a verdict at the deadline
+  // if nothing ever did.
+  var mount = document.getElementById(MOUNT) || document.body;
+
+  function rendered() {
+    return mount.children.length > 0 ||
+      (mount.textContent || "").trim().length > 0;
+  }
+
+  var observer = new MutationObserver(function () {
+    if (rendered()) { observer.disconnect(); ok(); }
   });
-  // Tell the platform the preview came up clean, so it can clear a
-  // stale error from the previous build.
+  observer.observe(mount, { childList: true, subtree: true, characterData: true });
+
   window.addEventListener("load", function () {
+    if (rendered()) { observer.disconnect(); return ok(); }
     setTimeout(function () {
-      if (!reported) { try { parent.postMessage({ __preview: "ok" }, "*"); } catch (e) {} }
-    }, 1600);
+      observer.disconnect();
+      if (settled) return;
+      if (rendered()) return ok();
+      // Distinguish the two causes rather than blaming the component:
+      // if the entry module never evaluated, the problem is upstream
+      // of anything the component does.
+      if (!window.__entryRan) {
+        report("The entry module never finished loading, so nothing ran. This is usually a package that could not be downloaded, or an import of a file that does not exist.", "", 0);
+      } else {
+        report("Nothing rendered. The entry module ran but produced no output — check that the root component is exported, that render() is actually called, and that the component returns markup on every path.", "", 0);
+      }
+    }, 9000);
   });
 })();
 </script>
@@ -296,7 +400,18 @@ ${TAILWIND_CDN}
       },
     });
 
-    return { status: 200, contentType: contentTypeFor(clean), body: out.outputText };
+    // A marker appended to the entry, so the failure reporter can tell
+    // "the module never evaluated" (a bad import, a package that would
+    // not download) from "it evaluated and rendered nothing" (a
+    // component returning null). Those have completely different
+    // causes, and blaming the component for the first one sends you
+    // looking in the wrong file.
+    const body =
+      clean === this.entryModule()
+        ? out.outputText + "\ntry { window.__entryRan = true; } catch (e) {}\n"
+        : out.outputText;
+
+    return { status: 200, contentType: contentTypeFor(clean), body };
   }
 }
 

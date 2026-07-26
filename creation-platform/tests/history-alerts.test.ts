@@ -87,10 +87,14 @@ test("a clean load clears the previous error", () => {
   assert.match(previewHtml(), /__preview: "ok"/);
 });
 
-test("one error, not a cascade", () => {
-  // A failed import usually triggers several downstream throws. Six
+test("one verdict per load, not a cascade", () => {
+  // A failed import usually triggers several downstream throws, and a
+  // late success must not overwrite an error already reported. Six
   // toasts for one cause is noise.
-  assert.match(previewHtml(), /if \(reported\) return;/);
+  const html = previewHtml();
+  assert.match(html, /var settled = false;/);
+  assert.match(html, /function report[\s\S]{0,80}if \(settled\) return;/);
+  assert.match(html, /function ok[\s\S]{0,40}if \(settled\) return;/);
 });
 
 // ── The toast ───────────────────────────────────────────────
