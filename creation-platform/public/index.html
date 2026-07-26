@@ -1450,7 +1450,9 @@ async function runLivePreview(opts) {
     const res = await fetch("/api/preview", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ files: project.files, kind: project.target }),
+      // The project id scopes the app's stored data. Without it the
+      // preview has nowhere to save, and db.save() answers 409.
+      body: JSON.stringify({ files: project.files, kind: project.target, projectId: currentProjectId }),
     });
     const started = await readJson(res);
     if (!res.ok && res.status !== 202) throw new Error(started.error || "Preview failed");

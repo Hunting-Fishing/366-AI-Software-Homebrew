@@ -352,7 +352,7 @@ export const FAILURES: FailureMode[] = [
     id: "import-of-missing-file",
     area: "generation",
     title: "A file imports another file that is not in the project",
-    signature: /Imports files that do not exist|404.*\.(?:jsx?|tsx?)\b/i,
+    signature: /Imports files that do not exist|Missing file: [^\s]+ — it is imported/i,
     cause:
       "The classic symptom of a partial write: the entry imports ./App.jsx and nothing ever created it. The module graph stops at the missing file, so nothing runs and the frame stays blank — with only a 404 in the console to say why.",
     fix: "Create the missing file, or remove the import. Check the whole project for other imports pointing at files that were never written.",

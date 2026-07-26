@@ -323,7 +323,7 @@ The model's output never arrived, or arrived unusable.
 
 **Fix.** Create the missing file, or remove the import. Check the whole project for other imports pointing at files that were never written.
 
-**Recognised by.** `Imports files that do not exist|404.*\.(?:jsx?|tsx?)\b`
+**Recognised by.** `Imports files that do not exist|Missing file: [^\s]+ — it is imported`
 
 ## Platform failures
 

@@ -270,6 +270,46 @@ ${TAILWIND_CDN}
   });
 })();
 </script>
+<script>
+// ── window.db ─────────────────────────────────────────────
+// Real storage for the generated app, so its records outlive the
+// browser profile and can be reached from a phone.
+//
+// It talks to /__data under this page's own base, which means the
+// token in that base is the credential — the app is never handed one,
+// and cannot name a project other than the one it is.
+(function () {
+  var BASE = ${JSON.stringify(base)} + "/__data/";
+  var failed = false;
+
+  async function call(method, collection, body, query) {
+    var res = await fetch(BASE + collection + (query || ""), {
+      method: method,
+      headers: body ? { "content-type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    var text = await res.text();
+    var data = text ? JSON.parse(text) : null;
+    if (!res.ok) {
+      failed = true;
+      throw new Error((data && data.error) || ("Storage error " + res.status));
+    }
+    return data;
+  }
+
+  window.db = {
+    get ready() { return !failed; },
+    list: function (collection) { return call("GET", collection); },
+    save: function (collection, recordOrArray) {
+      return call("POST", collection, recordOrArray);
+    },
+    remove: function (collection, idOrArray) {
+      var ids = Array.isArray(idOrArray) ? idOrArray : [idOrArray];
+      return call("DELETE", collection, null, "?ids=" + ids.map(encodeURIComponent).join(","));
+    },
+  };
+})();
+</script>
 <script type="module" src="${base}/${entry}"></script>
 <script>
 // ── Failure reporting ─────────────────────────────────────
@@ -379,6 +419,25 @@ ${TAILWIND_CDN}
 
     const content = this.files.get(clean);
     if (content === undefined) {
+      // A missing module used to be a plain-text 404. The browser
+      // reported it as a bare network error with no name attached, so
+      // the frame went blank and the console showed only a URL — which
+      // is exactly what "the entry module never finished loading" felt
+      // like from the outside.
+      //
+      // Answering with a module that throws puts the file name into a
+      // real error, where the reporter can catch it and the Fix button
+      // can act on it.
+      if (SCRIPT_EXT.some((e) => clean.endsWith(e))) {
+        const msg =
+          `Missing file: /${clean} — it is imported somewhere in this ` +
+          `project but does not exist. Create it, or remove the import.`;
+        return {
+          status: 404,
+          contentType: "application/javascript; charset=utf-8",
+          body: `throw new Error(${JSON.stringify(msg)});\n`,
+        };
+      }
       return { status: 404, contentType: "text/plain", body: "Not found: /" + clean };
     }
 

@@ -22,6 +22,9 @@ import http from "node:http";
 import type { Duplex } from "node:stream";
 import { previewRunner, LIVE_PATH } from "../services/runner.js";
 import { webPreview } from "../services/webPreview.js";
+import { makeAppDataStore, validCollection, type Record_ } from "../services/appData.js";
+
+const appData = makeAppDataStore();
 
 export const liveRouter = Router();
 
@@ -67,6 +70,16 @@ liveRouter.use(LIVE_PATH, (req: Request, res: Response) => {
     res.setHeader("access-control-allow-methods", "GET, HEAD, OPTIONS");
     res.setHeader("access-control-allow-headers", "*");
     res.status(204).end();
+    return;
+  }
+
+  // ── Generated-app persistence ────────────────────────────
+  // Served from inside the preview's own path so a generated app can
+  // reach it with a plain relative fetch: the URL is already
+  // CORS-open, and the token already proves which project is asking.
+  // Anything else would mean handing generated code a credential.
+  if (subPath.startsWith("/__data/")) {
+    void handleAppData(req, res, subPath.slice("/__data/".length));
     return;
   }
 
@@ -117,6 +130,91 @@ liveRouter.use(LIVE_PATH, (req: Request, res: Response) => {
   // so the raw body stream is still intact and can be piped.
   req.pipe(proxy);
 });
+
+/** Read and parse a JSON request body, with a cap so a runaway app cannot exhaust memory. */
+async function readJsonBody(req: Request): Promise<unknown> {
+  const LIMIT = 2 * 1024 * 1024;
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const parts: Buffer[] = [];
+    req.on("data", (c: Buffer) => {
+      size += c.length;
+      if (size > LIMIT) {
+        reject(new Error("That is too much data for one save. Save in smaller batches."));
+        req.destroy();
+        return;
+      }
+      parts.push(c);
+    });
+    req.on("end", () => {
+      const raw = Buffer.concat(parts).toString("utf8");
+      if (!raw) return resolve(null);
+      try { resolve(JSON.parse(raw)); }
+      catch { reject(new Error("The request body was not valid JSON.")); }
+    });
+    req.on("error", reject);
+  });
+}
+
+/**
+ * GET    /__data/<collection>  → every record
+ * POST   /__data/<collection>  → upsert one record or an array
+ * DELETE /__data/<collection>?ids=a,b → remove records
+ *
+ * The project id comes from the running preview, never from the
+ * request. A generated app cannot name someone else's project even if
+ * it tries, because it is never given the chance to say which one.
+ */
+async function handleAppData(req: Request, res: Response, collection: string): Promise<void> {
+  const name = collection.split("?")[0]?.replace(/\/+$/, "") ?? "";
+  if (!validCollection(name)) {
+    res.status(400).json({ error: "Bad collection name." });
+    return;
+  }
+
+  const projectId = previewRunner.projectId();
+  if (!projectId) {
+    // An unsaved project has nowhere to put anything. Say so plainly —
+    // this is the one case a generated app should handle gracefully.
+    res.status(409).json({
+      error: "This project has not been saved yet, so it has no storage. Save it first.",
+    });
+    return;
+  }
+
+  const userId = previewRunner.ownerId();
+  try {
+    if (req.method === "GET") {
+      res.json(await appData.list(projectId, name, userId));
+      return;
+    }
+    if (req.method === "POST" || req.method === "PUT") {
+      // This router is mounted before express.json(), because the
+      // proxy below needs the raw body stream intact. So this path
+      // reads and parses its own.
+      const body = await readJsonBody(req);
+      const records = (Array.isArray(body) ? body : [body]) as Record_[];
+      const usable = records.filter((r) => r && typeof r === "object" && r.id != null);
+      if (usable.length !== records.length) {
+        res.status(400).json({ error: "Every record needs an id." });
+        return;
+      }
+      res.json({ saved: await appData.put(projectId, name, usable, userId) });
+      return;
+    }
+    if (req.method === "DELETE") {
+      const q = String(req.originalUrl.split("?")[1] ?? "");
+      const ids = new URLSearchParams(q).get("ids");
+      res.json({
+        removed: await appData.remove(projectId, name, ids ? ids.split(",") : [], userId),
+      });
+      return;
+    }
+    res.status(405).json({ error: "Method not allowed." });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+}
 
 /**
  * Vite's hot reload opens a WebSocket. Express does not handle upgrades,

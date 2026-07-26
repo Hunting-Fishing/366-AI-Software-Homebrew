@@ -141,6 +141,10 @@ export class PreviewRunner {
   private runId = 0;
   /** Rotated on every begin(), so a stale frame cannot read a new preview. */
   private tok = newToken();
+  /** Which saved project this preview belongs to, for app data. */
+  private project = "";
+  /** Owner of that project, so app data is scoped the same way. */
+  private owner: string | undefined;
 
   /** The path prefix this run is served under, token included. */
   base(): string {
@@ -166,12 +170,18 @@ export class PreviewRunner {
    * Kick off a preview and return immediately. Poll status() for the
    * result. Starting a new one supersedes any run already in progress.
    */
-  begin(files: ProjectFile[], vite: boolean): PreviewStatus {
+  /** The project this preview is running, or "" if it was never saved. */
+  projectId(): string { return this.project; }
+  ownerId(): string | undefined { return this.owner; }
+
+  begin(files: ProjectFile[], vite: boolean, projectId = "", userId?: string): PreviewStatus {
     const id = ++this.runId;
     this.stop();
     this.runId = id; // stop() must not invalidate the run we just claimed
     this.startedAt = Date.now();
     this.tok = newToken();
+    this.project = projectId;
+    this.owner = userId;
 
     // React and mobile projects are served straight from memory — the
     // TypeScript compiler handles JSX and an import map handles the

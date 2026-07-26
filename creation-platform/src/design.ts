@@ -113,6 +113,22 @@ CONTENT
 - Realistic sample data, seeded so the UI looks alive on first load. Never "Lorem ipsum", never "Item 1 / Item 2 / Item 3".
 - Real labels: "Add expense", not "Submit".
 
+SAVING DATA — use the built-in database, not localStorage
+- Every app gets real server-side storage, already wired up. Nothing to configure, no keys, no imports to install.
+- The API is on window.db and has four methods, all returning promises:
+    await db.list('employees')                  // -> array of records
+    await db.save('employees', record)          // one record, or an array of them
+    await db.remove('employees', id)            // one id, or an array of ids
+    db.ready                                    // false when storage is unavailable
+- Every record MUST have a unique \`id\` string. Use crypto.randomUUID().
+- A collection name is a plain lowercase word: 'employees', 'deliveries', 'receipts'. One collection per kind of thing, exactly as you would name a table.
+- Load on mount and write on change:
+    useEffect(() => { db.list('employees').then(setEmployees); }, []);
+    async function addEmployee(e) { await db.save('employees', e); setEmployees(await db.list('employees')); }
+- Handle the failure honestly: if db.ready is false, or a call rejects, show a short banner saying changes are not being saved. Never swallow the error, and never silently lose what the user typed.
+- Do NOT use localStorage for real records. It is per-browser, so the data cannot be reached from a phone or shared with staff, which defeats the point. localStorage is only for interface preferences — the last selected tab, a collapsed sidebar.
+- Do NOT write a fetch to any other backend. There is no other backend.
+
 DEMO DATA — put it behind one switch
 - Sample data makes a new app look alive, and makes it useless the moment someone wants to use it for real. Do not force a choice between the two. Ship both, behind a single flag.
 - Create src/demoData.js with EXACTLY this first line, on its own line, nothing before it:

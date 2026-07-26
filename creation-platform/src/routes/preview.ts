@@ -20,14 +20,19 @@ import type { ProjectFile } from "../lib/files.js";
 export const previewRouter = Router();
 
 previewRouter.post("/api/preview", (req: Request, res: Response) => {
-  const { files, kind } = req.body as { files?: ProjectFile[]; kind?: string };
+  const { files, kind, projectId } = req.body as {
+    files?: ProjectFile[];
+    kind?: string;
+    /** Saved project this preview belongs to — scopes its stored data. */
+    projectId?: string;
+  };
   if (!files || files.length === 0) {
     res.status(400).json({ error: "files are required" });
     return;
   }
   try {
     // 202: accepted, not finished. The browser polls GET from here.
-    res.status(202).json(previewRunner.begin(files, runsWithVite(kind ?? "")));
+    res.status(202).json(previewRunner.begin(files, runsWithVite(kind ?? ""), projectId ?? "", req.user?.id));
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
