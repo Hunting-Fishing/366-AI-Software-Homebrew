@@ -22,6 +22,7 @@ import path from "node:path";
 import ts from "typescript";
 import type { ProjectFile } from "./files.js";
 import { browserPackages, inCatalogue } from "../packages.js";
+import { contractViolations } from "../services/contracts.js";
 
 export interface CheckResult {
   ok: boolean;
@@ -292,6 +293,15 @@ function checkReact(files: ProjectFile[], capacitor = false): CheckResult {
           "\nEither create those files or remove the imports."
       );
     }
+  }
+
+  // 6. An import that names something its source does not export.
+  //    Step 5 checks the FILE exists; this is the next failure along,
+  //    and the one a refactor actually causes — the file is there, the
+  //    symbol moved out of it, and nothing notices until the browser
+  //    throws "does not provide an export named".
+  for (const v of contractViolations(files)) {
+    problems.push(`--- ${v.file} ---\n${v.message}`);
   }
 
   return report(problems);

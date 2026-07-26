@@ -1333,7 +1333,7 @@ async function send() {
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = "", streamed = "", result = null, unhealthy = null;
+    let buffer = "", streamed = "", result = null, unhealthy = null, contractLosses = [];
     const startedAt = Date.now();
 
     while (true) {
@@ -1357,6 +1357,12 @@ async function send() {
           streamed = "";
           $("codeView").textContent = "";
           thinking.innerHTML = '<span class="spinner"></span>Found errors in the generated code — auto-fixing…';
+        } else if (event.type === "contracts") {
+          // Something outside the edited files depended on a name that
+          // is now gone. Not necessarily wrong — deleting a feature
+          // deletes its route — but never something to find out weeks
+          // later, which is what silence here would guarantee.
+          contractLosses = event.losses || [];
         } else if (event.type === "unhealthy") {
           // The build finished with the project still broken. This used
           // to be silent — the reason RestoBar Manager was prompted
@@ -1397,6 +1403,24 @@ async function send() {
             : "Done! " + project.files.length + " files generated.");
     }
     $("status").textContent = "";
+
+    if (contractLosses.length) {
+      const worst = contractLosses.find((l) => l.kind === "collection") || contractLosses[0];
+      const more = contractLosses.length - 1;
+      showToast({
+        kind: "contract",
+        title: "That change removed something other parts of the app relied on",
+        detail: worst.why + (more > 0 ? "\n\n(and " + more + " more)" : "") +
+          "\n\n" + contractLosses.map((l) => "  " + l.kind + ": " + l.name).join("\n"),
+        fix:
+          "The last change removed things the rest of the app depends on:\n\n" +
+          contractLosses.map((l) => "- " + l.kind + ' "' + l.name + '" — ' + l.why).join("\n") +
+          "\n\nPut them back exactly as they were spelled. Moving them between " +
+          "files is fine; renaming or dropping them is not. Storage collection " +
+          "names in particular are database keys — a renamed one orphans every " +
+          "existing record.",
+      });
+    }
 
     if (unhealthy) {
       const lost = unhealthy.lost || [];

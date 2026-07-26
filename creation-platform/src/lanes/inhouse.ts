@@ -20,6 +20,7 @@ import { getTarget } from "../targets.js";
 import { extractHtml } from "../lib/extract.js";
 import { parseFiles, parseDeletions, applyEdit, serializeFiles, type ProjectFile } from "../lib/files.js";
 import { checkProject, type CheckResult } from "../lib/check.js";
+import { extractContracts, contractDiff, contractBrief } from "../services/contracts.js";
 import type { AgentEvent, AgentLane, LaneRequest } from "./types.js";
 
 /**
@@ -168,6 +169,16 @@ export const inhouseLane: AgentLane = {
         // any single file.
         yield { type: "unhealthy", errors: verdict.check.errors, lost: verdict.lost };
       }
+    }
+
+    // ── Contract check ───────────────────────────────────────
+    // A refactor MOVES things, and every move is a chance to drop
+    // something outside the edited file that depended on a name. The
+    // app still compiles and a collection is quietly spelled
+    // differently — which looks like data loss to whoever uses it.
+    if (isEdit) {
+      const losses = contractDiff(extractContracts(base), extractContracts(files));
+      if (losses.length) yield { type: "contracts", losses };
     }
 
     // Say so when the result is still broken. Silence here is what let

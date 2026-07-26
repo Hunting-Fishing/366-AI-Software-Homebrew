@@ -26,6 +26,7 @@ import { canExecute } from "./services/sandbox.js";
 import { CONNECTORS, CATEGORIES } from "./connectors.js";
 import { projectHealth, refactorPrompt, FILE_LIMIT, FILE_COMFORTABLE, FN_COMFORTABLE } from "./codeHealth.js";
 import type { ProjectFile } from "./lib/files.js";
+import { extractContracts, contractBrief } from "./services/contracts.js";
 import { ffmpegAvailable, MEDIA_DIR } from "./services/studio.js";
 import { authMiddleware, loginHandler } from "./middleware/auth.js";
 import { authRouter } from "./routes/auth.js";
@@ -109,8 +110,13 @@ app.post("/api/code-health", (req, res) => {
   res.json({
     ...health,
     limits: { file: FILE_LIMIT, comfortable: FILE_COMFORTABLE, fn: FN_COMFORTABLE },
-    // The prompt that fixes the worst one, ready to send.
-    refactor: health.worst[0] ? refactorPrompt(health.worst[0]) : null,
+    // The prompt that fixes the worst one, ready to send — with the
+    // project's contracts attached. A model splitting a 700-line file
+    // has no way to know that 'employees' is a storage key rather than
+    // a variable name unless it is told.
+    refactor: health.worst[0]
+      ? refactorPrompt(health.worst[0]) + "\n\n" + contractBrief(extractContracts(files ?? []))
+      : null,
   });
 });
 

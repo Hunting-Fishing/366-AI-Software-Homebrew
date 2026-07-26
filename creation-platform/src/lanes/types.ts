@@ -70,6 +70,17 @@ export interface UnhealthyEvent {
   lost?: string[];
 }
 
+/**
+ * The build worked, but something outside the edited files depended on
+ * a name that is now gone: a storage collection, a route, a saved
+ * setting. Not an error — deleting a feature legitimately deletes its
+ * route — but never something to discover weeks later.
+ */
+export interface ContractEvent {
+  type: "contracts";
+  losses: Array<{ kind: string; name: string; why: string }>;
+}
+
 /** Finished. Single-html targets carry `code`; multi-file carry `files`. */
 export interface DoneEvent {
   type: "done";
@@ -85,7 +96,7 @@ export interface DoneEvent {
 }
 
 /** Emitted by lanes. */
-export type AgentEvent = ChunkEvent | FixingEvent | UnhealthyEvent | DoneEvent;
+export type AgentEvent = ChunkEvent | FixingEvent | UnhealthyEvent | ContractEvent | DoneEvent;
 
 /** Emitted by the route — lanes throw, the route frames the failure. */
 export interface ErrorEvent {
