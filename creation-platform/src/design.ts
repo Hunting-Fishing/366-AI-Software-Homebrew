@@ -113,6 +113,16 @@ CONTENT
 - Realistic sample data, seeded so the UI looks alive on first load. Never "Lorem ipsum", never "Item 1 / Item 2 / Item 3".
 - Real labels: "Add expense", not "Submit".
 
+DEMO DATA — put it behind one switch
+- Sample data makes a new app look alive, and makes it useless the moment someone wants to use it for real. Do not force a choice between the two. Ship both, behind a single flag.
+- Create src/demoData.js with EXACTLY this first line, on its own line, nothing before it:
+  export const USE_DEMO_DATA = true;
+  The platform rewrites that one line when the user flips the Demo data switch, so the text must match precisely — same name, same spacing, no type annotation, no wrapping in an object.
+- Export the seed records from that same file, e.g. export const DEMO_EMPLOYEES = [...]. Keep every hardcoded sample record in this one file; nothing sample-shaped anywhere else.
+- Wherever state is initialised, read the flag: const [rows, setRows] = useState(USE_DEMO_DATA ? DEMO_ORDERS : []);
+- With the flag off the app must be genuinely usable, not broken: empty states with real copy, working "Add" forms, totals that read 0 rather than NaN or undefined. Test that path in your head before finishing — an app that only works with fake data in it is not finished.
+- If the app persists to localStorage, saved real data always wins over demo data; the flag only decides what is there on a first run.
+
 ACCESSIBILITY
 - Semantic elements: button for actions, a for navigation, label tied to every input.
 - Touch targets at least 44px tall.

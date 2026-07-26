@@ -43,6 +43,7 @@
     --code-bg: #090a0e;
     --code-fg: #c3cdf0;
     --err-bg: #2a1519; --err-bd: #4a2028; --err-fg: #ffb4bd;
+    --diff-add: #7ee2b8; --diff-del: #ffa4ad;
     --good-bg: #0f1d18;
     --r: 8px; --r-lg: 12px;
     --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.28);
@@ -76,6 +77,7 @@
                              surface actively hurts. */
     --code-fg: #d6def7;
     --err-bg: #fef2f2; --err-bd: #fecaca; --err-fg: #b91c1c;
+    --diff-add: #7ee2b8; --diff-del: #ffa4ad;  /* the diff sits on the dark code surface in both themes */
     --good-bg: #ecfdf5;
     --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.08);
     --pop-shadow: 0 4px 12px rgba(16,24,40,.08), 0 16px 48px rgba(16,24,40,.14);
@@ -289,6 +291,12 @@
     background: var(--raised); color: var(--text);
     box-shadow: 0 1px 2px rgba(0,0,0,.35), 0 0 0 1px var(--border) inset;
   }
+  .seg .badge {
+    margin-left: 6px; font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums;
+    background: var(--border); color: var(--muted); border-radius: 99px; padding: 1px 5px;
+  }
+  .seg .badge:empty { display: none; }
+  .seg button.on .badge { background: var(--accent); color: #fff; }
   #toolbar .status { font-size: 12px; color: var(--muted); margin-left: auto; }
   #toolbar button.icon {
     width: 30px; height: 30px; padding: 0; font-size: 14px;
@@ -316,6 +324,87 @@
     background: var(--good-bg); border-top: 1px solid var(--border); flex: 0 0 auto;
   }
   #runHint button { margin-left: 8px; height: 27px; font-size: 12px; }
+
+  /* ── Toggle switch ────────────────────────────────────────*/
+  .tgl { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; flex: 0 0 auto; margin-left: 4px; }
+  .tgl input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .tgl .track {
+    width: 30px; height: 17px; border-radius: 99px; background: var(--raised);
+    border: 1px solid var(--border); position: relative; transition: background .15s, border-color .15s;
+  }
+  .tgl .knob {
+    position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%;
+    background: var(--faint); transition: transform .15s, background .15s;
+  }
+  .tgl input:checked + .track { background: var(--accent); border-color: var(--accent); }
+  .tgl input:checked + .track .knob { transform: translateX(13px); background: #fff; }
+  .tgl input:focus-visible + .track { box-shadow: var(--ring); }
+  .tgl .lb { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .tgl:hover .lb { color: var(--text); }
+
+  /* ── Build history ────────────────────────────────────────*/
+  #histWrap { flex: 1; display: none; flex-direction: column; min-height: 0; background: var(--bg); }
+  #histHead {
+    display: flex; align-items: baseline; gap: 9px; padding: 14px 18px 10px; flex: 0 0 auto;
+    border-bottom: 1px solid var(--border);
+  }
+  #histHead .h { font-size: 13px; font-weight: 600; }
+  #histHead .sub { font-size: 11.5px; color: var(--faint); }
+  #histList { flex: 1; overflow-y: auto; padding: 14px 18px 24px; }
+  #histList .empty { color: var(--muted); font-size: 13px; padding: 18px 0; }
+
+  /* One entry per build. The rail down the left makes the order
+     obvious without numbering every row. */
+  .ver { position: relative; padding: 0 0 4px 22px; }
+  .ver::before {
+    content: ""; position: absolute; left: 4px; top: 16px; bottom: -4px; width: 1px; background: var(--border);
+  }
+  .ver:last-child::before { display: none; }
+  .ver .dot {
+    position: absolute; left: 0; top: 9px; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--panel2); border: 2px solid var(--border);
+  }
+  .ver.head .dot { background: var(--accent); border-color: var(--accent); }
+  .ver .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: 11px 13px; margin-bottom: 10px; transition: border-color .14s;
+  }
+  .ver .card:hover { border-color: var(--hover-bd); }
+  .ver .top { display: flex; align-items: baseline; gap: 8px; }
+  .ver .v { font-size: 10.5px; font-weight: 600; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .ver .when { font-size: 10.5px; color: var(--faint); margin-left: auto; white-space: nowrap; }
+  .ver .now { font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 99px; background: var(--accent); color: #fff; }
+  /* The prompt is the thing you scan for, so it gets the weight. */
+  .ver .prompt { font-size: 13px; line-height: 1.5; margin-top: 5px; color: var(--text); }
+  .ver .files { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+  .ver .f {
+    font: 11px ui-monospace, "SF Mono", Consolas, monospace;
+    background: var(--panel2); border: 1px solid var(--border-soft);
+    border-radius: 5px; padding: 2px 6px; color: var(--muted);
+  }
+  .ver .f.add { color: var(--good); border-color: var(--good); }
+  .ver .f.del { color: var(--danger); border-color: var(--danger); }
+  .ver .acts { display: flex; gap: 6px; margin-top: 10px; }
+  .ver .acts button { height: 26px; font-size: 11.5px; padding: 0 9px; }
+  .ver .diff {
+    display: none; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden; background: var(--code-bg);
+  }
+  .ver .diff.open { display: block; }
+  .ver .diff .fh {
+    font: 11px ui-monospace, Consolas, monospace; padding: 6px 10px;
+    background: var(--panel2); color: var(--muted); border-bottom: 1px solid var(--border);
+  }
+  .ver .diff pre {
+    margin: 0; padding: 8px 0; overflow-x: auto; max-height: 320px;
+    font: 11.5px/1.55 ui-monospace, "SF Mono", Consolas, monospace; color: var(--code-fg);
+  }
+  .ver .diff .ln { display: block; padding: 0 10px; white-space: pre; }
+  .ver .diff .ln.a { background: rgba(52,211,153,.11); color: var(--diff-add); }
+  .ver .diff .ln.r { background: rgba(248,113,113,.11); color: var(--diff-del); }
+  .ver .diff .ln.h { color: var(--faint); }
+  .ver .diff .skip { padding: 5px 10px; font-size: 11px; color: var(--faint); background: var(--panel2); }
 
   /* ── Empty state ──────────────────────────────────────────*/
   #empty {
@@ -366,6 +455,36 @@
   .phase li { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: flex-start; padding: 3px 0; line-height: 1.45; }
   .phase li.done { text-decoration: line-through; opacity: .55; }
   .phase li .bx { flex: 0 0 auto; margin-top: 2px; accent-color: var(--accent); }
+
+  /* ── Alert strip ──────────────────────────────────────────
+     Above the prompt box, sharing the slot with the suggestions —
+     the spot your eye is already on when you are about to type. */
+  #alerts { padding: 0 12px; flex: 0 0 auto; }
+  #alerts:not(:empty) { padding: 12px 12px 0; }
+  .toast {
+    display: flex; gap: 10px; align-items: flex-start;
+    border-radius: 10px; padding: 10px 11px; margin-bottom: 8px;
+    background: var(--err-bg); border: 1px solid var(--err-bd); color: var(--err-fg);
+    animation: rise .16s ease-out;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+  .toast svg.i { margin: 1px 0 0; color: inherit; }
+  .toast .body { flex: 1; min-width: 0; }
+  .toast .t { font-size: 12.5px; font-weight: 600; }
+  .toast .d {
+    font-size: 11.5px; line-height: 1.5; margin-top: 3px; opacity: .9;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    word-break: break-word; max-height: 76px; overflow: auto;
+  }
+  .toast .acts { display: flex; gap: 6px; margin-top: 9px; }
+  .toast .acts button { height: 27px; font-size: 12px; padding: 0 11px; }
+  .toast .acts button.fix {
+    background: var(--danger); border-color: transparent; color: #fff; font-weight: 500;
+  }
+  .toast .acts button.fix:hover:not(:disabled) { background: var(--danger); filter: brightness(1.1); }
+  .toast .x { background: transparent; border: none; color: inherit; opacity: .6; width: 22px; height: 22px; padding: 0; }
+  .toast .x:hover { opacity: 1; background: transparent; border-color: transparent; }
+  .toast.info { background: var(--good-bg); border-color: var(--border); color: var(--good); }
 
   /* ── Next-step chips ──────────────────────────────────────*/
   #suggest { padding: 12px 14px; border-top: 1px solid var(--border); display: none; background: var(--panel); flex: 0 0 auto; }
@@ -433,7 +552,6 @@
   <span class="spacer"></span>
 
   <select id="projectSel" title="Open a saved project"><option value="">Open project…</option></select>
-  <select id="historySel" title="Roll this project back to an earlier version" style="display:none"><option value="">History…</option></select>
   <div class="vr"></div>
   <button id="saveBtn" disabled title="Save now"><span data-icon="save"></span>Save</button>
   <button id="downloadBtn" class="icon-only" disabled title="Download as a ZIP" aria-label="Download as a ZIP"><span data-icon="download"></span></button>
@@ -479,6 +597,10 @@
       </div>
       <div id="brainBody"></div>
     </div>
+    <!-- Alerts sit directly above the prompt box, in the same slot as
+         the suggestions: the place you are already looking when you
+         are about to type. An error shown anywhere else gets missed. -->
+    <div id="alerts"></div>
     <div id="suggest">
       <div class="lbl">Next steps for this phase</div>
       <div id="suggestList"></div>
@@ -494,7 +616,15 @@
       <div class="seg" role="tablist" aria-label="View">
         <button id="previewTab" role="tab" aria-selected="true"><span data-icon="eye" data-size="sm"></span>Preview</button>
         <button id="codeTab" role="tab" aria-selected="false"><span data-icon="code" data-size="sm"></span>Code</button>
+        <button id="histTab" role="tab" aria-selected="false"><span data-icon="history" data-size="sm"></span>History<span class="badge" id="histCount2"></span></button>
       </div>
+      <!-- Demo data lives here rather than in the menu because it is
+           something you flip while looking at the result. -->
+      <label id="demoWrap" class="tgl" style="display:none" title="Show the seeded sample data, or start clean for real use">
+        <input type="checkbox" id="demoTgl" checked>
+        <span class="track"><span class="knob"></span></span>
+        <span class="lb">Demo data</span>
+      </label>
       <span class="status" id="status"></span>
       <button id="reloadBtn" class="icon" title="Reload the preview" aria-label="Reload the preview"><span data-icon="rotate-cw"></span></button>
       <button id="popoutBtn" class="icon" title="Open the preview in a new tab" aria-label="Open the preview in a new tab"><span data-icon="external-link"></span></button>
@@ -524,6 +654,16 @@
       <div id="fileTabs"></div>
       <pre id="codeView"></pre>
       <div id="runHint"></div>
+    </div>
+    <!-- Build history: every prompt, what it changed, and the diff.
+         One view rather than three, because they are three readings
+         of the same list. -->
+    <div id="histWrap">
+      <div id="histHead">
+        <span class="h">Build history</span>
+        <span class="sub" id="histCount"></span>
+      </div>
+      <div id="histList"></div>
     </div>
   </div>
 </main>
@@ -572,6 +712,8 @@ const $ = (id) => document.getElementById(id);
 // colour of the text beside it. That is the thing emoji could never do.
 const ICONS = {
   "zap": '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  "history": '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  "x": '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   "chevron-down": '<path d="m6 9 6 6 6-6"/>',
   "save": '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',
   "download": '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
@@ -820,20 +962,27 @@ function isWeb(p) { return p && p.target === "web"; }
 // build and publish all treat it exactly like React.
 function isVite(p) { return p && (p.target === "react" || p.target === "mobile"); }
 
+const TABS = { preview: "previewTab", code: "codeTab", history: "histTab" };
+
 function showTab(which) {
+  if (!TABS[which]) which = "preview";
   const onPreview = which === "preview";
   $("preview").style.display = onPreview && !booting ? "" : "none";
   $("booting").style.display = onPreview && booting ? "flex" : "none";
   $("codeWrap").style.display = which === "code" ? "flex" : "none";
+  $("histWrap").style.display = which === "history" ? "flex" : "none";
   // The segmented control has to reflect where you actually are —
   // without this the highlight sticks to whichever tab was clicked
   // last, even when the view changed on its own after a build.
-  $("previewTab").classList.toggle("on", onPreview);
-  $("codeTab").classList.toggle("on", !onPreview);
-  $("previewTab").setAttribute("aria-selected", String(onPreview));
-  $("codeTab").setAttribute("aria-selected", String(!onPreview));
+  for (const [name, id] of Object.entries(TABS)) {
+    const on = name === which;
+    $(id).classList.toggle("on", on);
+    $(id).setAttribute("aria-selected", String(on));
+  }
   $("reloadBtn").style.display = onPreview ? "" : "none";
   $("popoutBtn").style.display = onPreview ? "" : "none";
+  $("demoWrap").style.display = onPreview && demoFlagFile() ? "" : "none";
+  if (which === "history") renderHistory();
 }
 
 function renderFileTabs() {
@@ -851,6 +1000,7 @@ function renderFileTabs() {
 
 function renderProject() {
   $("empty").style.display = "none";
+  syncDemoToggle();
   $("saveBtn").disabled = false;
   $("downloadBtn").disabled = false;
   $("publishBtn").disabled = !(isWeb(project) || isVite(project));
@@ -1009,16 +1159,17 @@ async function send() {
     // pressing a button to see what you just built is a step that
     // should not exist.
     autoSave();
+    clearToasts("preview");   // a fresh build supersedes the last failure
+    versionCache = {};
     if (canPreview(project)) runLivePreview({ auto: true });
 
     // The plan: drafted on the first build, updated after every one.
     // Both are best-effort — a planner hiccup must never look like a
     // failed build.
-    if (!hadProject && (!brain || !brain.phases || !brain.phases.length)) {
-      planBrain(firstPrompt).then(() => advanceBrain(promptText));
-    } else {
-      advanceBrain(promptText);
-    }
+    // advanceBrain plans first if there is no plan, so this is one
+    // call either way. Two branches here is how the loaded-project
+    // case got missed in the first place.
+    advanceBrain(promptText);
   } catch (err) {
     thinking.remove();
     addMsg("err", "" + err.message);
@@ -1163,9 +1314,22 @@ async function planBrain(idea) {
   } catch { /* a missing plan must never block a build */ }
 }
 
+/** Does this project have a usable phase plan? */
+function hasPlan() {
+  return Boolean(brain && brain.phases && brain.phases.length);
+}
+
 /** After a build: mark progress and offer the next steps. */
 async function advanceBrain(justBuilt) {
-  if (!brain || !brain.phases || !brain.phases.length) return;
+  // Reported as "Pre-Suggested Prompts are not showing up".
+  //
+  // This used to `return` when there was no plan. Opening a project
+  // saved before the brain existed — or any project whose first plan
+  // failed — meant every later build hit that return, so suggestions
+  // never appeared again and there was no way to recover short of
+  // starting a new project. Plan on demand instead.
+  if (!hasPlan()) await planBrain(firstPrompt || justBuilt);
+  if (!hasPlan()) return;
   try {
     const r = await fetch("/api/brain/advance", {
       method: "POST",
@@ -1742,6 +1906,347 @@ $("promptBox").addEventListener("keydown", (e) => {
 // way back. Any project that has a preview can switch to it.
 $("previewTab").onclick = () => { if (project) showTab("preview"); };
 $("codeTab").onclick = () => { if (project) showTab("code"); };
+$("histTab").onclick = () => { if (project) showTab("history"); };
+
+// ── Alerts ──────────────────────────────────────────────────
+// Errors used to be trapped inside the preview iframe: the frame
+// printed a red banner the parent could not read, so the only way to
+// act on one was to retype it into the prompt box by hand.
+
+function clearToasts(kind) {
+  for (const t of $("alerts").querySelectorAll(kind ? '.toast[data-kind="' + kind + '"]' : ".toast")) {
+    t.remove();
+  }
+}
+
+/**
+ * @param opts.title   short human line
+ * @param opts.detail  the raw message — monospace, scrollable
+ * @param opts.fix     prompt to send when Fix is clicked; omit for no button
+ * @param opts.kind    dedupe key; a second toast of the same kind replaces the first
+ */
+function showToast(opts) {
+  const kind = opts.kind || "error";
+  clearToasts(kind);
+  const el = document.createElement("div");
+  el.className = "toast" + (opts.info ? " info" : "");
+  el.setAttribute("data-kind", kind);
+  el.innerHTML =
+    icon(opts.info ? "check" : "alert") +
+    '<div class="body"><div class="t"></div><div class="d"></div><div class="acts"></div></div>' +
+    '<button class="x" title="Dismiss" aria-label="Dismiss">' + icon("x", "sm") + "</button>";
+  el.querySelector(".t").textContent = opts.title;
+  const d = el.querySelector(".d");
+  if (opts.detail) d.textContent = opts.detail; else d.remove();
+
+  const acts = el.querySelector(".acts");
+  if (opts.fix) {
+    const fix = document.createElement("button");
+    fix.className = "fix";
+    fix.textContent = "Fix this";
+    fix.onclick = () => {
+      if (busy) return;
+      el.remove();
+      $("promptBox").value = opts.fix;
+      send();
+    };
+    acts.appendChild(fix);
+    const copy = document.createElement("button");
+    copy.textContent = "Copy error";
+    copy.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(opts.detail || opts.title);
+        copy.textContent = "Copied";
+        setTimeout(() => { copy.textContent = "Copy error"; }, 1400);
+      } catch { /* clipboard blocked — the text is selectable above */ }
+    };
+    acts.appendChild(copy);
+  } else {
+    acts.remove();
+  }
+  el.querySelector(".x").onclick = () => el.remove();
+  $("alerts").appendChild(el);
+  return el;
+}
+
+/**
+ * The preview posts its runtime errors out to us. Without this the
+ * message dies inside the iframe and the build merely looks blank.
+ */
+window.addEventListener("message", (e) => {
+  const d = e.data;
+  if (!d || typeof d !== "object") return;
+  if (d.__preview === "ok") { clearToasts("preview"); return; }
+  if (d.__preview !== "error") return;
+
+  const raw = String(d.message || "").slice(0, 600);
+  const where = d.source ? String(d.source).replace(/^.*\/live\//, "") : "";
+  showToast({
+    kind: "preview",
+    title: "The preview hit an error",
+    detail: raw + (where ? "\n  at " + where + (d.line ? ":" + d.line : "") : ""),
+    // Handing the agent the verbatim message matters more than any
+    // wording around it — that string names the file and the symbol.
+    fix:
+      "The preview is failing with this error:\n\n" + raw +
+      (where ? "\n(in " + where + (d.line ? " line " + d.line : "") + ")" : "") +
+      "\n\nFind the cause and fix it. Check that every symbol imported " +
+      "from a module is actually exported by that module, with the " +
+      "exact same name. Change only what is needed for this error.",
+  });
+});
+
+// ── Build history ───────────────────────────────────────────
+// Three things Jordi asked for turn out to be three readings of one
+// list: what did I ask for, what changed, and show me the code. So
+// they are one view with expandable rows, not three tabs that would
+// each need their own empty state.
+
+let versionCache = {};   // version number -> full project snapshot
+
+async function renderHistory() {
+  const list = $("histList");
+  if (!currentProjectId) {
+    list.innerHTML = '<div class="empty">Nothing saved yet. Your first build starts the history.</div>';
+    $("histCount").textContent = "";
+    return;
+  }
+  let versions = [];
+  try {
+    versions = await fetch("/api/projects/" + currentProjectId + "/versions").then(r => r.json());
+  } catch { /* fall through to the empty state */ }
+  if (!Array.isArray(versions) || !versions.length) {
+    list.innerHTML = '<div class="empty">No builds recorded for this project yet.</div>';
+    $("histCount").textContent = "";
+    return;
+  }
+
+  $("histCount").textContent =
+    versions.length + (versions.length === 1 ? " build" : " builds") +
+    " · newest first";
+  list.innerHTML = "";
+  for (const v of versions) list.appendChild(versionRow(v, v.version === versions[0].version));
+}
+
+function versionRow(v, isHead) {
+  const row = document.createElement("div");
+  row.className = "ver" + (isHead ? " head" : "");
+  row.innerHTML =
+    '<span class="dot"></span>' +
+    '<div class="card">' +
+      '<div class="top"><span class="v"></span><span class="now" style="display:none">Current</span>' +
+      '<span class="when"></span></div>' +
+      '<div class="prompt"></div><div class="files"></div>' +
+      '<div class="acts"></div><div class="diff"></div>' +
+    "</div>";
+  row.querySelector(".v").textContent = "v" + v.version;
+  row.querySelector(".when").textContent = new Date(v.createdAt).toLocaleString();
+  // The label IS the prompt — that is what makes this list readable
+  // as a record of what you asked for.
+  row.querySelector(".prompt").textContent = v.label || "Saved";
+  if (isHead) row.querySelector(".now").style.display = "";
+
+  const acts = row.querySelector(".acts");
+  const diff = row.querySelector(".diff");
+
+  const view = document.createElement("button");
+  setBtn(view, "code", "View changes");
+  view.onclick = async () => {
+    if (diff.classList.contains("open")) { diff.classList.remove("open"); return; }
+    setBtn(view, "code", "Loading…");
+    view.disabled = true;
+    try {
+      await fillDiff(diff, row, v.version);
+      diff.classList.add("open");
+    } catch (err) {
+      diff.textContent = "Could not load this version: " + err.message;
+      diff.classList.add("open");
+    }
+    setBtn(view, "code", "View changes");
+    view.disabled = false;
+  };
+  acts.appendChild(view);
+
+  if (!isHead) {
+    const restore = document.createElement("button");
+    setBtn(restore, "rotate-cw", "Restore this");
+    restore.onclick = () => restoreVersion(v.version);
+    acts.appendChild(restore);
+  }
+  return row;
+}
+
+/** Snapshot for a version, fetched once. */
+async function loadVersion(n) {
+  if (versionCache[n]) return versionCache[n];
+  const r = await fetch("/api/projects/" + currentProjectId + "/versions/" + n);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  versionCache[n] = await r.json();
+  return versionCache[n];
+}
+
+function filesOf(p) {
+  const m = {};
+  if (p.code) m["index.html"] = p.code;          // single-file targets
+  for (const f of p.files || []) m[f.path] = f.content;
+  return m;
+}
+
+/** Fill the file chips and the diff body for one version. */
+async function fillDiff(diff, row, n) {
+  const cur = filesOf(await loadVersion(n));
+  // Version 1 has nothing before it, so every file reads as added.
+  const prev = n > 1 ? filesOf(await loadVersion(n - 1)) : {};
+
+  const names = [...new Set([...Object.keys(cur), ...Object.keys(prev)])].sort();
+  const changed = names.filter((p) => cur[p] !== prev[p]);
+
+  const chips = row.querySelector(".files");
+  chips.innerHTML = "";
+  if (!changed.length) {
+    chips.innerHTML = '<span class="f">no file changes</span>';
+  }
+  for (const p of changed) {
+    const s = document.createElement("span");
+    const added = !(p in prev), removed = !(p in cur);
+    s.className = "f" + (added ? " add" : removed ? " del" : "");
+    s.textContent = (added ? "+ " : removed ? "− " : "~ ") + p;
+    chips.appendChild(s);
+  }
+
+  diff.innerHTML = "";
+  if (!changed.length) {
+    diff.innerHTML = '<div class="skip">This version changed no files.</div>';
+    return;
+  }
+  for (const p of changed) {
+    const head = document.createElement("div");
+    head.className = "fh";
+    head.textContent = p;
+    diff.appendChild(head);
+    const pre = document.createElement("pre");
+    renderDiff(pre, prev[p] ?? "", cur[p] ?? "");
+    diff.appendChild(pre);
+  }
+}
+
+/**
+ * Line diff, longest-common-subsequence.
+ *
+ * Deliberately not a library: files here are a few hundred lines, the
+ * table is O(n·m) on that and finishes instantly, and adding a bundler
+ * dependency to this page is the thing the whole preview design
+ * avoids. Context is trimmed to 3 lines so a one-line change reads as
+ * a one-line change.
+ */
+function renderDiff(pre, before, after) {
+  const A = before ? before.split("\n") : [];
+  const B = after ? after.split("\n") : [];
+  const CAP = 4000;   // pathological files fall back to a summary
+  if (A.length > CAP || B.length > CAP) {
+    const s = document.createElement("span");
+    s.className = "ln h";
+    s.textContent = "  (file too large to diff — " + A.length + " → " + B.length + " lines)";
+    pre.appendChild(s);
+    return;
+  }
+
+  const n = A.length, m = B.length;
+  const lcs = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      lcs[i][j] = A[i] === B[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+  const ops = [];
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (A[i] === B[j]) { ops.push(["=", A[i]]); i++; j++; }
+    else if (lcs[i + 1][j] >= lcs[i][j + 1]) { ops.push(["-", A[i]]); i++; }
+    else { ops.push(["+", B[j]]); j++; }
+  }
+  while (i < n) ops.push(["-", A[i++]]);
+  while (j < m) ops.push(["+", B[j++]]);
+
+  // Keep 3 unchanged lines either side of each edit; collapse the rest.
+  const keep = new Array(ops.length).fill(false);
+  ops.forEach((o, k) => {
+    if (o[0] === "=") return;
+    for (let x = Math.max(0, k - 3); x <= Math.min(ops.length - 1, k + 3); x++) keep[x] = true;
+  });
+
+  let hidden = 0;
+  const flush = () => {
+    if (!hidden) return;
+    const s = document.createElement("div");
+    s.className = "skip";
+    s.textContent = hidden + " unchanged line" + (hidden === 1 ? "" : "s");
+    pre.appendChild(s);
+    hidden = 0;
+  };
+  ops.forEach((o, k) => {
+    if (!keep[k]) { hidden++; return; }
+    flush();
+    const s = document.createElement("span");
+    s.className = "ln" + (o[0] === "+" ? " a" : o[0] === "-" ? " r" : "");
+    s.textContent = (o[0] === "=" ? "  " : o[0] + " ") + o[1];
+    pre.appendChild(s);
+  });
+  flush();
+}
+
+async function restoreVersion(n) {
+  if (busy) return;
+  if (!confirm("Restore version " + n + "? Your current state is kept as a version, so this can be undone.")) return;
+  try {
+    const p = await readJson(await fetch(
+      "/api/projects/" + currentProjectId + "/restore/" + n, { method: "POST" }));
+    applyLoaded(p);
+    versionCache = {};
+    await refreshHistory();
+    await renderHistory();
+    addMsg("bot", "Rolled back to version " + n + ". That rollback is itself a version, so you can undo it.");
+    if (canPreview(project)) runLivePreview({ auto: true });
+  } catch (err) {
+    showToast({ kind: "restore", title: "Could not restore that version", detail: err.message });
+  }
+}
+
+// ── Demo data ───────────────────────────────────────────────
+// Generated apps put their seed data behind one exported boolean, so
+// the difference between "show me what this looks like" and "hand this
+// to staff on Monday" is a single line — not a regeneration.
+
+const DEMO_RE = /^(\s*export\s+const\s+USE_DEMO_DATA\s*=\s*)(true|false)(\s*;?)/m;
+
+/** The file carrying the flag, or null if this project has none. */
+function demoFlagFile() {
+  if (!project || !project.files) return null;
+  return project.files.find((f) => DEMO_RE.test(f.content)) || null;
+}
+
+function syncDemoToggle() {
+  const f = demoFlagFile();
+  $("demoWrap").style.display = f ? "" : "none";
+  if (f) $("demoTgl").checked = /=\s*true/.test(DEMO_RE.exec(f.content)[0]);
+}
+
+$("demoTgl").onchange = async () => {
+  const f = demoFlagFile();
+  if (!f) return;
+  const on = $("demoTgl").checked;
+  f.content = f.content.replace(DEMO_RE, (_m, a, _b, c) => a + (on ? "true" : "false") + c);
+  renderProject();
+  // silent: flipping a switch is not a build, so it must not create a
+  // restore point.
+  autoSave({ silent: true });
+  if (canPreview(project)) runLivePreview({ auto: true });
+  showToast({
+    kind: "demo", info: true,
+    title: on ? "Demo data on — sample records are showing." : "Demo data off — the app starts empty, ready for real entry.",
+  });
+  setTimeout(() => clearToasts("demo"), 4000);
+};
 
 $("reloadBtn").onclick = () => {
   if (!project) return;
@@ -1850,23 +2355,19 @@ function applyLoaded(p) {
 }
 
 async function refreshHistory() {
-  const sel = $("historySel");
-  if (!currentProjectId) { sel.style.display = "none"; return; }
+  // Was a header dropdown. It duplicated the History tab, and the
+  // header was already overfull — so it became a count on the tab
+  // instead, which is also the first thing you look at to know
+  // whether there is anything to look at.
+  versionCache = {};
+  const badge = $("histCount2");
+  if (!currentProjectId) { badge.textContent = ""; return; }
   let versions = [];
   try {
     versions = await fetch("/api/projects/" + currentProjectId + "/versions").then(r => r.json());
-  } catch { /* older server without history — just hide the control */ }
-  if (!Array.isArray(versions) || versions.length === 0) { sel.style.display = "none"; return; }
-
-  sel.innerHTML = '<option value="">History (' + versions.length + ')…</option>';
-  for (const v of versions) {
-    const opt = document.createElement("option");
-    opt.value = String(v.version);
-    const when = new Date(v.createdAt).toLocaleString();
-    opt.textContent = "v" + v.version + " — " + v.label + "  (" + when + ")";
-    sel.appendChild(opt);
-  }
-  sel.style.display = "";
+  } catch { /* older server without history — leave the badge blank */ }
+  badge.textContent = Array.isArray(versions) && versions.length ? String(versions.length) : "";
+  if ($("histWrap").style.display === "flex") renderHistory();
 }
 
 // Saving is automatic now, so the button is a manual checkpoint. It
@@ -1889,21 +2390,6 @@ $("projectSel").onchange = async (e) => {
   if (id) await openProject(id);
 };
 
-$("historySel").onchange = async (e) => {
-  const version = e.target.value;
-  e.target.value = "";
-  if (!version || !currentProjectId) return;
-  if (!confirm("Roll back to version " + version + "?\n\nNothing is lost — the rollback becomes a new version, so you can undo it.")) return;
-  try {
-    const res = await fetch("/api/projects/" + currentProjectId + "/restore/" + version, { method: "POST" });
-    if (!res.ok) throw new Error((await res.json()).error || "restore failed");
-    applyLoaded(await res.json());
-    await refreshHistory();
-    addMsg("bot", "Rolled back to version " + version + ". That rollback is itself a version, so you can undo it.");
-  } catch (err) {
-    addMsg("err", "Could not roll back: " + humanError(err.message));
-  }
-};
 
 // ── Appearance ──────────────────────────────────────────────
 // Three states, not two. "System" is the honest default: a builder

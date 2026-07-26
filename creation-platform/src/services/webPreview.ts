@@ -200,12 +200,61 @@ ${TAILWIND_CDN}
 <div id="root"></div>
 <script type="module" src="${base}/${entry}"></script>
 <script>
-window.addEventListener("error", function (e) {
-  document.body.insertAdjacentHTML("afterbegin",
-    '<pre style="margin:0;padding:14px;background:#3a1d24;color:#ff9db0;' +
-    'font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap">' +
-    String(e.message).replace(/[<>&]/g, "") + "</pre>");
-});
+// Errors here are the single most common way a build "looks broken".
+// A missing export or a typo'd import throws before anything renders,
+// so the user sees a blank frame and has no idea why.
+//
+// Two jobs, and the second is the important one:
+//   1. print it in the frame, so it is visible at all
+//   2. postMessage it OUT, so the platform can offer to fix it
+// Without (2) the message is trapped in an iframe the parent cannot
+// read, and the user has to retype the error by hand.
+(function () {
+  var reported = false;
+  function report(message, source, line) {
+    if (reported) return;   // one error, not a cascade of consequences
+    reported = true;
+    var text = String(message || "Unknown error");
+    document.body.insertAdjacentHTML("afterbegin",
+      '<pre style="margin:0;padding:14px;background:#3a1d24;color:#ff9db0;' +
+      'font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap">' +
+      text.replace(/[<>&]/g, "") + "</pre>");
+    try {
+      parent.postMessage({
+        __preview: "error",
+        message: text,
+        source: source || "",
+        line: line || 0,
+      }, "*");
+    } catch (e) { /* no parent, or a stricter sandbox — the banner stands alone */ }
+  }
+  window.addEventListener("error", function (e) {
+    report(e.message, e.filename, e.lineno);
+  });
+  // A failed dynamic import or a throw inside an effect surfaces here
+  // rather than as an "error" event.
+  window.addEventListener("unhandledrejection", function (e) {
+    var r = e.reason;
+    report(r && r.message ? r.message : r, "", 0);
+  });
+  // Nothing thrown and nothing rendered means a module never evaluated.
+  // Say so rather than showing an empty white rectangle.
+  window.addEventListener("load", function () {
+    setTimeout(function () {
+      var root = document.getElementById("root");
+      if (!reported && root && root.children.length === 0) {
+        report("Nothing rendered. The entry module loaded but produced no output — check that the root component is exported and actually returns markup.", "", 0);
+      }
+    }, 1500);
+  });
+  // Tell the platform the preview came up clean, so it can clear a
+  // stale error from the previous build.
+  window.addEventListener("load", function () {
+    setTimeout(function () {
+      if (!reported) { try { parent.postMessage({ __preview: "ok" }, "*"); } catch (e) {} }
+    }, 1600);
+  });
+})();
 </script>
 </body>
 </html>`,
