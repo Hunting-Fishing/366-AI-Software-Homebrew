@@ -45,6 +45,7 @@
     --err-bg: #2a1519; --err-bd: #4a2028; --err-fg: #ffb4bd;
     --diff-add: #7ee2b8; --diff-del: #ffa4ad;
     --on-good: #06231a;   /* text ON the good colour, not the good colour itself */
+    --warn-bg: #7a5d16; --warn-fg: #ffdf9e;
     --good-bg: #0f1d18;
     --r: 8px; --r-lg: 12px;
     --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.28);
@@ -80,6 +81,7 @@
     --err-bg: #fef2f2; --err-bd: #fecaca; --err-fg: #b91c1c;
     --diff-add: #7ee2b8; --diff-del: #ffa4ad;  /* the diff sits on the dark code surface in both themes */
     --on-good: #ffffff;
+    --warn-bg: #fde68a; --warn-fg: #78350f;
     --good-bg: #ecfdf5;
     --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.08);
     --pop-shadow: 0 4px 12px rgba(16,24,40,.08), 0 16px 48px rgba(16,24,40,.14);
@@ -325,6 +327,37 @@
   #fileTabs button.ch-modified .dot { background: var(--accent-hi); }
   #fileTabs button.ch-removed { color: var(--danger); text-decoration: line-through; opacity: .6; }
   #fileTabs button.active.ch-added, #fileTabs button.active.ch-modified { color: #fff; }
+  /* ── Streaming code view ──────────────────────────────────*/
+  .sLead { color: var(--muted); font-style: italic; margin-bottom: 14px; white-space: pre-wrap; }
+  .sFile {
+    position: sticky; top: 0; margin: 16px 0 6px; padding: 6px 10px; border-radius: 6px;
+    font-size: 11.5px; font-weight: 600; letter-spacing: .01em; z-index: 1;
+  }
+  .sFile:first-child { margin-top: 0; }
+  .sFile.isNew { background: rgba(52,211,153,.14); color: var(--diff-add); }
+  .sFile.isMod { background: rgba(99,102,241,.16); color: var(--accent-hi); }
+  .sBody { margin-bottom: 4px; }
+  .sBody .ln { display: block; padding: 0 4px; white-space: pre; }
+  .sBody .ln.a { background: rgba(52,211,153,.11); color: var(--diff-add); }
+  .sBody .ln.r { background: rgba(248,113,113,.11); color: var(--diff-del); }
+  .sBody .skip { padding: 4px; font-size: 11px; color: var(--faint); }
+
+  /* Size on the tab, and the strip that offers to fix it. */
+  #fileTabs .len {
+    font-size: 10px; font-variant-numeric: tabular-nums; padding: 1px 5px;
+    border-radius: 99px; background: var(--border); color: var(--faint);
+  }
+  #fileTabs .len.watch { background: var(--warn-bg); color: var(--warn-fg); }
+  #fileTabs .len.over { background: var(--danger); color: #fff; }
+  #healthBar {
+    display: none; align-items: center; gap: 9px; flex: 0 0 auto;
+    padding: 9px 14px; font-size: 12px; line-height: 1.5;
+    background: var(--err-bg); border-bottom: 1px solid var(--err-bd); color: var(--err-fg);
+  }
+  #healthBar .t { flex: 1; }
+  #healthBar button { height: 26px; font-size: 11.5px; padding: 0 10px; flex: 0 0 auto; }
+  #healthBar svg.i { flex: 0 0 auto; }
+
   #codeView {
     flex: 1; overflow: auto; margin: 0; padding: 16px 18px;
     font: 12.5px/1.65 ui-monospace, "SF Mono", Consolas, monospace;
@@ -790,6 +823,7 @@
     <iframe id="preview" sandbox="allow-scripts" style="display:none"></iframe>
     <div id="codeWrap">
       <div id="fileTabs"></div>
+      <div id="healthBar"></div>
       <pre id="codeView"></pre>
       <div id="runHint"></div>
     </div>
@@ -1159,6 +1193,16 @@ function renderFileTabs() {
       b.appendChild(dot);
     }
     b.appendChild(document.createTextNode(f.path));
+    // Size, right there on the tab. A number nobody can see is a
+    // number that grows.
+    const h = healthOf(f.path);
+    if (h) {
+      const n = document.createElement("span");
+      n.className = "len " + h.level;
+      n.textContent = String(h.lines);
+      n.title = h.advice || h.lines + " lines";
+      b.appendChild(n);
+    }
     b.onclick = () => { activeFile = i; renderProject(); showTab("code"); };
     tabs.appendChild(b);
   }
@@ -1176,6 +1220,7 @@ function renderFileTabs() {
 function renderProject() {
   $("empty").style.display = "none";
   syncDemoToggle();
+  refreshHealth();
   $("saveBtn").disabled = false;
   $("downloadBtn").disabled = false;
   $("publishBtn").disabled = !(isWeb(project) || isVite(project));
@@ -1302,8 +1347,7 @@ async function send() {
         const event = JSON.parse(line.slice(5));
         if (event.type === "chunk") {
           streamed += event.text;
-          $("codeView").textContent = streamed;
-          $("codeView").scrollTop = $("codeView").scrollHeight;
+          paintStream(streamed);
           // Real progress, not a spinner. A true percentage is not
           // knowable — nobody knows how many files the model will
           // write until it writes them — but "4 files, 38s" is honest
@@ -2840,6 +2884,143 @@ function showProgress(el, streamed, startedAt) {
   el.innerHTML = '<span class="spinner"></span>';
   el.appendChild(document.createTextNode(line));
 }
+
+// ── Live colouring while the model writes ───────────────────
+// The Code tab used to show the raw stream as one grey wall, which is
+// why it looked like everything was being rewritten even after edits
+// became merges. It now colours as it arrives: a file header says
+// whether that file is new or being changed, and once a file finishes
+// its lines are diffed against what was there before — green added,
+// red removed, dim unchanged.
+//
+// Only completed files are diffed. The one still streaming is shown
+// plain, because half a file diffs as "everything removed" and that
+// would be actively misleading.
+
+let paintPending = null;
+
+function paintStream(text) {
+  // Throttled: a diff per chunk on a 500-line file would drop frames.
+  if (paintPending) return;
+  paintPending = setTimeout(() => { paintPending = null; doPaintStream(text); }, 90);
+}
+
+function doPaintStream(text) {
+  const view = $("codeView");
+  const atBottom = view.scrollHeight - view.scrollTop - view.clientHeight < 60;
+  const before = new Map((project && project.files ? project.files : []).map((f) => [f.path, f.content]));
+
+  view.innerHTML = "";
+  const frag = document.createDocumentFragment();
+
+  // Split on file markers, keeping what precedes the first one.
+  const parts = text.split(/^===FILE:\s*(.+?)\s*===$/m);
+  if (parts[0] && parts[0].trim()) {
+    const pre = document.createElement("div");
+    pre.className = "sLead";
+    pre.textContent = parts[0].trim();
+    frag.appendChild(pre);
+  }
+
+  for (let i = 1; i < parts.length; i += 2) {
+    const path = parts[i];
+    let body = parts[i + 1] ?? "";
+    const closed = /^===ENDFILE===$/m.test(body);
+    body = body.replace(/^===ENDFILE===[\s\S]*$/m, "");
+
+    const isNew = !before.has(path);
+    const head = document.createElement("div");
+    head.className = "sFile " + (isNew ? "isNew" : "isMod");
+    head.textContent = (isNew ? "+ new file  " : "~ changing  ") + path +
+      (closed ? "  \u00b7  " + body.split("\n").length + " lines" : "  \u00b7  writing\u2026");
+    frag.appendChild(head);
+
+    const pre = document.createElement("div");
+    pre.className = "sBody";
+    if (closed && !isNew) {
+      paintDiffInto(pre, before.get(path) || "", body);
+    } else {
+      // A new file is all addition; an unfinished one is not yet
+      // comparable to anything.
+      for (const line of body.split("\n")) {
+        const el = document.createElement("span");
+        el.className = "ln" + (closed && isNew ? " a" : "");
+        el.textContent = (closed && isNew ? "+ " : "  ") + line;
+        pre.appendChild(el);
+      }
+    }
+    frag.appendChild(pre);
+  }
+
+  view.appendChild(frag);
+  if (atBottom) view.scrollTop = view.scrollHeight;
+}
+
+/** Line diff into an element, reusing the History tab's renderer. */
+function paintDiffInto(el, before, after) {
+  const pre = document.createElement("pre");
+  pre.style.margin = "0";
+  renderDiff(pre, before, after);
+  while (pre.firstChild) el.appendChild(pre.firstChild);
+}
+
+// ── Size health ─────────────────────────────────────────────
+// A file that keeps growing is what eventually breaks this platform:
+// every edit sends it and gets it back, so a 1,200-line component
+// makes each change slow, costly and far more likely to be truncated.
+// The failure looks like a bad model; it is a bad file. So the size is
+// visible, and the fix is one click.
+
+let health = null;
+
+async function refreshHealth() {
+  if (!project || !project.files || !project.files.length) { health = null; return; }
+  try {
+    health = await fetch("/api/code-health", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ files: project.files }),
+    }).then((r) => r.json());
+  } catch { health = null; }
+  renderFileTabs();
+  renderHealthBar();
+}
+
+function healthOf(path) {
+  if (!health) return null;
+  return health.files.find((f) => f.path === path) || null;
+}
+
+function renderHealthBar() {
+  const bar = $("healthBar");
+  bar.innerHTML = "";
+  if (!health || !health.worst.length) { bar.style.display = "none"; return; }
+  bar.style.display = "";
+
+  const w = health.worst[0];
+  const rest = health.worst.length - 1;
+  const ic = document.createElement("span");
+  ic.innerHTML = icon("alert", "sm");
+  bar.appendChild(ic);
+
+  const txt = document.createElement("span");
+  txt.className = "t";
+  txt.textContent =
+    w.path + " is " + w.lines + " lines" +
+    (rest > 0 ? " (and " + rest + " more over " + health.limits.file + ")" : "") +
+    " \u2014 big files make every edit slower and more likely to be cut off.";
+  bar.appendChild(txt);
+
+  const go = document.createElement("button");
+  setBtn(go, "sparkles", "Split it up");
+  go.onclick = () => {
+    if (busy || !health.refactor) return;
+    $("promptBox").value = health.refactor;
+    send();
+  };
+  bar.appendChild(go);
+}
+
 
 // ── Connectors ──────────────────────────────────────────────
 // A connector links a project to a service the user already pays for.

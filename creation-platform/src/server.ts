@@ -24,6 +24,8 @@ import { FAILURES } from "./failures.js";
 import { integrationsRouter } from "./routes/integrations.js";
 import { canExecute } from "./services/sandbox.js";
 import { CONNECTORS, CATEGORIES } from "./connectors.js";
+import { projectHealth, refactorPrompt, FILE_LIMIT, FILE_COMFORTABLE, FN_COMFORTABLE } from "./codeHealth.js";
+import type { ProjectFile } from "./lib/files.js";
 import { ffmpegAvailable, MEDIA_DIR } from "./services/studio.js";
 import { authMiddleware, loginHandler } from "./middleware/auth.js";
 import { authRouter } from "./routes/auth.js";
@@ -97,6 +99,19 @@ app.get("/api/failures", (_req, res) => {
 // though the integration is not.
 app.get("/api/connectors", (_req, res) => {
   res.json({ connectors: CONNECTORS, categories: CATEGORIES });
+});
+
+// Size report for a project. Computed here rather than in the browser
+// so there is one implementation of the rule, not two that drift.
+app.post("/api/code-health", (req, res) => {
+  const { files } = req.body as { files?: ProjectFile[] };
+  const health = projectHealth(files ?? []);
+  res.json({
+    ...health,
+    limits: { file: FILE_LIMIT, comfortable: FILE_COMFORTABLE, fn: FN_COMFORTABLE },
+    // The prompt that fixes the worst one, ready to send.
+    refactor: health.worst[0] ? refactorPrompt(health.worst[0]) : null,
+  });
 });
 
 app.use(generateRouter);

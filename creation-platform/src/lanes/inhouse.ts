@@ -36,6 +36,7 @@ export const EDIT_CONTRACT = [
   "- When a file does need changing, output that whole file, complete. There is no patch format here.",
   "- To remove a file, write a line: ===DELETE: path/of/file.ext===  Do this only when the change genuinely requires it.",
   "- Before you finish: if you referenced a file that does not exist yet, create it in this same reply. A missing import is the most common way an edit breaks a working app.",
+  "- If a file you are editing is already past 500 lines, split it as part of this change rather than making it longer. A file that big makes every future edit slow and far more likely to be cut off mid-reply.",
   "- Start with one short sentence saying what you changed and why. No other prose.",
 ].join("\n");
 

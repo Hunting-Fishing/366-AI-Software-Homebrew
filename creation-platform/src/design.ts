@@ -19,6 +19,7 @@
 // on body text" produces something that looks designed.
 
 import { catalogueRules } from "./packages.js";
+import { SIZE_RULES } from "./codeHealth.js";
 
 /** Tailwind Play CDN — no build step, resolved by the browser. */
 export const TAILWIND_CDN =
@@ -74,6 +75,8 @@ button{cursor:pointer}
  */
 export const DESIGN_RULES = `
 ${catalogueRules()}
+
+${SIZE_RULES}
 
 DESIGN SYSTEM — follow this, it is what separates a real product from a school project:
 
