@@ -174,3 +174,23 @@ test("a malformed package.json does not break the preview", () => {
   ]);
   assert.equal(wp.serve("/", "/live").status, 200, "checkProject already reports the bad json");
 });
+
+test("Tailwind and the base layer are injected into every preview", () => {
+  // The 1990s look came from the prompt forbidding Tailwind, leaving the
+  // model to hand-write CSS from scratch every time. Both halves matter:
+  // the utilities, and a base layer so even a bare <div> starts from
+  // something considered.
+  const html = loaded().serve("/", "/live").body;
+  assert.match(html, /cdn\.tailwindcss\.com/);
+  assert.match(html, /--accent:/, "base design tokens missing");
+  assert.match(html, /font-family:ui-sans-serif/, "base typography missing");
+});
+
+test("the base layer loads before the project's own stylesheet", () => {
+  // Otherwise our defaults would override what the app deliberately set.
+  const html = loaded().serve("/", "/live").body;
+  assert.ok(
+    html.indexOf("--accent:") < html.indexOf('rel="stylesheet"'),
+    "project CSS must win over the base layer"
+  );
+});

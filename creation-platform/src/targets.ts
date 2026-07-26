@@ -2,6 +2,8 @@
 // Adding a new target (React Native, Godot GDScript, etc.) means
 // adding one entry here. The platform stays the same.
 
+import { DESIGN_RULES, DESIGN_TASTE } from "./design.js";
+
 export type TargetMode = "single-html" | "multi-file";
 
 export interface Target {
@@ -40,11 +42,12 @@ export const targets: Record<string, Target> = {
 
 RULES — follow every one:
 1. Output ONE complete, self-contained HTML file. All CSS in a <style> tag, all JavaScript in a <script> tag. No external files, no build steps.
-2. External libraries are allowed ONLY from https://cdnjs.cloudflare.com.
+2. Load Tailwind CSS from https://cdn.tailwindcss.com in the <head> and style everything with Tailwind utility classes. Any other library must come from https://cdnjs.cloudflare.com.
 3. The app must be mobile-responsive. Mobile-first layout, include a <meta name="viewport"> tag.
 4. Do not use localStorage or sessionStorage; keep state in JavaScript variables.
 5. Respond with ONLY the HTML code. No explanations, no markdown fences. Start with <!DOCTYPE html>.
-${SHARED_QUALITY_RULES}`,
+${SHARED_QUALITY_RULES}
+${DESIGN_RULES}`,
   },
 
   flutter: {
@@ -65,6 +68,7 @@ RULES — follow every one:
 6. The app must work on phones AND tablets (responsive layouts).
 7. Keep the code WEB-COMPATIBLE so it also runs with "flutter run -d chrome": never import dart:io, use only cross-platform APIs.
 ${SHARED_QUALITY_RULES}
+${DESIGN_TASTE}
 ${MULTI_FILE_FORMAT}`,
   },
 
@@ -85,6 +89,7 @@ RULES — follow every one:
 5. Store data in memory or a local JSON/SQLite file — zero external services.
 6. app.py must end with: if __name__ == "__main__": app.run(debug=True)
 ${SHARED_QUALITY_RULES}
+${DESIGN_RULES}
 ${MULTI_FILE_FORMAT}`,
   },
   react: {
@@ -103,10 +108,11 @@ RULES — follow every one:
    - vite.config.js using @vitejs/plugin-react.
    - index.html with <div id="root"></div> and <script type="module" src="/src/main.jsx"></script>.
    - src/main.jsx mounting <App /> with ReactDOM.createRoot.
-3. Split the app properly: src/App.jsx plus focused components in src/components/, and one src/styles.css imported from main.jsx. No Tailwind, no extra npm packages beyond rule 2.
+3. Split the app properly: src/App.jsx plus focused components in src/components/. Tailwind is already loaded in the preview — use utility classes, and only add src/styles.css for the rare thing Tailwind cannot express.
 4. Modern React: function components and hooks only. Keep state in React state (no localStorage).
-5. Mobile-responsive and beautiful: coherent palette, spacing, rounded corners, transitions in styles.css.
+5. Mobile-responsive and beautiful. Follow the design system below exactly.
 ${SHARED_QUALITY_RULES}
+${DESIGN_RULES}
 ${MULTI_FILE_FORMAT}`,
   },
 
@@ -129,7 +135,7 @@ RULES — follow every one:
    - capacitor.config.json with appId (reverse-domain, e.g. "com.example.myapp"), appName, and "webDir": "dist".
    - index.html with <div id="root"></div>, <script type="module" src="/src/main.jsx"></script>, and a viewport meta tag including viewport-fit=cover.
    - src/main.jsx mounting <App /> with ReactDOM.createRoot.
-3. Split the app properly: src/App.jsx plus focused components in src/components/, and one src/styles.css imported from main.jsx. No Tailwind, no npm packages beyond rule 2.
+3. Split the app properly: src/App.jsx plus focused components in src/components/. Tailwind is already loaded in the preview — use utility classes, and only add src/styles.css for the rare thing Tailwind cannot express.
 4. DESIGN FOR A PHONE, not a desktop browser shrunk down:
    - Single-column layout. Touch targets at least 44x44px. No hover-only interactions.
    - Respect the notch and home indicator with env(safe-area-inset-*) padding.
@@ -139,6 +145,7 @@ RULES — follow every one:
 5. Modern React: function components and hooks only. Keep state in React state (no localStorage).
 6. Assume no network unless the user asks for it. Use realistic in-memory sample data.
 ${SHARED_QUALITY_RULES}
+${DESIGN_RULES}
 ${MULTI_FILE_FORMAT}`,
   },
 

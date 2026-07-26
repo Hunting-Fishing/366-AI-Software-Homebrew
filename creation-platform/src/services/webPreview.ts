@@ -27,6 +27,7 @@
 
 import ts from "typescript";
 import type { ProjectFile } from "../lib/files.js";
+import { BASE_CSS, TAILWIND_CDN } from "../design.js";
 
 const CDN = "https://esm.sh";
 const REACT = "18.3.1";
@@ -190,6 +191,8 @@ export class WebPreview {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title}</title>
+${TAILWIND_CDN}
+<style>${BASE_CSS}</style>
 <script type="importmap">${JSON.stringify(importMap)}</script>
   ${links}
 </head>

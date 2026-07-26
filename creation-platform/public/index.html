@@ -74,10 +74,20 @@
   #booting .bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width .4s ease; }
   #booting .pct { font-size: 22px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
 
-  #empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); background: var(--bg); }
+  #empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); background: var(--bg); overflow-y: auto; padding: 24px; }
   #empty .big { font-size: 40px; }
   #empty .ideas { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 0 30px; }
   #empty .ideas button { font-size: 13px; }
+
+  /* Your projects, shown on arrival — the first thing you want is to
+     carry on with what you were doing. */
+  #recent { width: 100%; max-width: 620px; margin-top: 8px; }
+  #recent h3 { font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 10px; text-align: center; }
+  #recent .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  #recent .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; text-align: left; color: var(--text); transition: border-color .15s, transform .15s; }
+  #recent .card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  #recent .card .nm { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #recent .card .dt { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--muted); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -168,6 +178,10 @@
         <button onclick="useIdea('A recipe box app with search and categories')">Recipe box</button>
         <button onclick="useIdea('A 2D breakout game with levels and scores')">Breakout game</button>
         <button onclick="useIdea('An expense tracker with monthly charts')">Expense tracker</button>
+      </div>
+      <div id="recent" style="display:none">
+        <h3>Your projects</h3>
+        <div class="grid" id="recentGrid"></div>
       </div>
     </div>
     <div id="booting">
@@ -261,7 +275,12 @@ async function init() {
 }
 
 async function refreshProjects() {
-  const projects = await fetch("/api/projects").then(r => r.json());
+  let projects = [];
+  try {
+    projects = await readJson(await fetch("/api/projects"));
+  } catch { return; }
+  if (!Array.isArray(projects)) return;
+
   const sel = $("projectSel");
   sel.innerHTML = '<option value="">Load project…</option>';
   for (const p of projects) {
@@ -269,6 +288,74 @@ async function refreshProjects() {
     opt.value = p.id;
     opt.textContent = p.name;
     sel.appendChild(opt);
+  }
+
+  // Also show them on the empty screen. Coming back to a half-finished
+  // project should not require finding a dropdown first.
+  const grid = $("recentGrid");
+  grid.innerHTML = "";
+  for (const p of projects.slice(0, 12)) {
+    const card = document.createElement("button");
+    card.className = "card";
+    const when = p.savedAt ? new Date(p.savedAt).toLocaleString() : "";
+    card.innerHTML = '<div class="nm"></div><div class="dt"></div>';
+    card.querySelector(".nm").textContent = p.name;
+    card.querySelector(".dt").textContent = when;
+    card.onclick = () => openProject(p.id);
+    grid.appendChild(card);
+  }
+  $("recent").style.display = projects.length ? "" : "none";
+}
+
+async function openProject(id) {
+  const p = await readJson(await fetch("/api/projects/" + encodeURIComponent(id)));
+  currentProjectId = p.id;
+  applyLoaded(p);
+  await refreshHistory();
+  addMsg("bot", "📂 Opened “" + p.name + "”. Tell me what to change.");
+  if (canPreview(project)) runLivePreview({ auto: true });
+}
+
+/**
+ * Persist after every build so nothing is ever lost to a closed tab.
+ * First build creates the project; later ones update it and append a
+ * version, so the history stays useful rather than filling with
+ * near-identical copies.
+ */
+async function autoSave() {
+  const body = {
+    prompt: firstPrompt,
+    target: project.target,
+    code: project.code,
+    files: project.files,
+    binaries: project.binaries || [],
+  };
+  try {
+    if (currentProjectId) {
+      const r = await fetch("/api/projects/" + encodeURIComponent(currentProjectId), {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error("update failed");
+    } else {
+      const name = (firstPrompt || "Untitled").replace(/\s+/g, " ").trim().slice(0, 60);
+      const r = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...body, name }),
+      });
+      if (!r.ok) throw new Error("save failed");
+      currentProjectId = (await readJson(r)).id;
+    }
+    await refreshProjects();
+    await refreshHistory();
+    $("saveBtn").textContent = "💾 Saved";
+    setTimeout(() => { $("saveBtn").textContent = "💾 Save"; }, 2000);
+  } catch {
+    // Never interrupt the build over a failed save — the code is still
+    // on screen and downloadable. Just say so quietly.
+    $("saveBtn").textContent = "⚠️ Not saved";
   }
 }
 
@@ -462,8 +549,11 @@ async function send() {
           : "✅ Done! " + project.files.length + " files generated.");
     $("status").textContent = "";
 
-    // Boot the preview without being asked. Pressing a button to see
-    // what you just built is a step that should not exist.
+    // Persist before anything else — a closed tab should never cost a
+    // build. Then boot the preview without being asked, because
+    // pressing a button to see what you just built is a step that
+    // should not exist.
+    autoSave();
     if (canPreview(project)) runLivePreview({ auto: true });
   } catch (err) {
     thinking.remove();
@@ -1165,13 +1255,9 @@ $("saveBtn").onclick = async () => {
 };
 
 $("projectSel").onchange = async (e) => {
-  if (!e.target.value) return;
-  const p = await fetch("/api/projects/" + e.target.value).then(r => r.json());
-  currentProjectId = p.id;
-  applyLoaded(p);
-  await refreshHistory();
-  addMsg("bot", "📂 Loaded “" + p.name + "”. Tell me what to change.");
+  const id = e.target.value;
   e.target.value = "";
+  if (id) await openProject(id);
 };
 
 $("historySel").onchange = async (e) => {
