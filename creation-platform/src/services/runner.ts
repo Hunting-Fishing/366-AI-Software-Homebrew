@@ -8,14 +8,21 @@
 //   Python           still spawns a real Flask process, because there
 //                    is no way to run Python in a browser.
 //
-// SECURITY NOTE (documented in docs/PHASES.md): the Python path runs
-// AI-generated code on this machine. That's acceptable for our own
-// in-house use with our own generations. Before offering this to
-// outside users, it MUST move into real sandboxing (Docker/Firecracker
-// — Phase 3). The React path executes only in the user's own browser,
-// so it carries none of that risk.
+// SECURITY. The Python path runs AI-generated code on this machine, so
+// every spawn goes through services/sandbox.ts. That does two things
+// this file used not to do: it builds the child environment from an
+// allowlist rather than inheriting ours (the old code passed
+// SUPABASE_SERVICE_KEY straight to generated Python), and it refuses to
+// run at all when the deployment has user accounts.
+//
+// That is credential isolation, not process isolation. A container per
+// run (Daytona, E2B) is still the gate before public signups — but the
+// gate is now enforced by canExecute() rather than remembered in a doc.
+// The React path executes only in the user's own browser and carries
+// none of this risk.
 
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { spawnSync, type ChildProcess } from "node:child_process";
+import { spawnSandboxed, killTree, canExecute, ExecutionBlocked } from "./sandbox.js";
 import fs from "node:fs";
 import net from "node:net";
 import { randomBytes } from "node:crypto";
@@ -194,6 +201,16 @@ export class PreviewRunner {
       return this.status();
     }
 
+    // Ask before doing anything: a deployment with user accounts does
+    // not run generated code in the shared process, and saying so is
+    // more useful than failing halfway through a boot.
+    const verdict = canExecute();
+    if (!verdict.allowed) {
+      this.state = "error";
+      this.message = verdict.reason;
+      return this.status();
+    }
+
     this.state = "starting";
     this.message = "Starting the app";
     const work = this.start(files);
@@ -243,9 +260,14 @@ export class PreviewRunner {
     }
 
     let errOutput = "";
-    const child = spawn(py, ["app.py"], {
+    // Was: env: { ...process.env, ... } — which handed generated Python
+    // every secret this server holds, SUPABASE_SERVICE_KEY included.
+    // spawnSandboxed builds the environment from an allowlist and has
+    // no code path that copies process.env.
+    const child = spawnSandboxed(py, ["app.py"], {
       cwd: dir,
-      env: { ...process.env, PORT: String(port), FLASK_DEBUG: "0" },
+      env: { PORT: String(port), FLASK_DEBUG: "0" },
+      server: true,
     });
     child.stderr?.on("data", (d: Buffer) => (errOutput += d.toString()));
     child.stdout?.on("data", (d: Buffer) => (errOutput += d.toString()));
@@ -293,7 +315,8 @@ export class PreviewRunner {
     //    small instance, and keeping the process alive after everything
     //    else has been torn down.
     await new Promise<void>((resolve, reject) => {
-      const p = spawn(npm, ["install", "--no-audit", "--no-fund"], { cwd: dir });
+      // npm runs generated package.json scripts, so it is generated code too.
+      const p = spawnSandboxed(npm, ["install", "--no-audit", "--no-fund"], { cwd: dir, timeoutMs: 240_000 });
       this.child = p;
       let err = "";
       p.stderr?.on("data", (d: Buffer) => (err += d.toString()));
@@ -325,7 +348,7 @@ export class PreviewRunner {
     //    that prefix. Without it the page loads and every <script> and
     //    stylesheet 404s.
     let errOutput = "";
-    const child = spawn(
+    const child = spawnSandboxed(
       npx,
       [
         "vite",
@@ -334,7 +357,7 @@ export class PreviewRunner {
         "--host", "127.0.0.1",
         "--base", this.base() + "/",
       ],
-      { cwd: dir }
+      { cwd: dir, server: true }
     );
     child.stderr?.on("data", (d: Buffer) => (errOutput += d.toString()));
     child.stdout?.on("data", (d: Buffer) => (errOutput += d.toString()));
@@ -352,13 +375,10 @@ export class PreviewRunner {
   }
 
   stop(): void {
-    if (this.child && !this.child.killed) {
-      try {
-        this.child.kill();
-      } catch {
-        /* already gone */
-      }
-    }
+    // killTree, not kill: the child is detached into its own process
+    // group precisely so that anything IT started dies too. A plain
+    // kill leaves npm's or Vite's grandchildren holding the port.
+    killTree(this.child);
     this.child = null;
     this.activePort = null;
     this.state = "idle";

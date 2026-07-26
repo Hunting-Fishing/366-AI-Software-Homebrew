@@ -1,7 +1,7 @@
 // Build service: turn a generated React (Vite) project into
 // optimized static files ready for the 🚀 Publish pipeline.
 
-import { spawn } from "node:child_process";
+import { spawnSandboxed } from "./sandbox.js";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -12,7 +12,9 @@ const TEXT_EXT = new Set([".html", ".js", ".css", ".svg", ".json", ".txt", ".map
 
 function run(cmd: string, args: string[], cwd: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const p = spawn(cmd, args, { cwd });
+    // Generated code again: a build runs the project's own scripts.
+    // Same allowlisted environment as every other generated-code spawn.
+    const p = spawnSandboxed(cmd, args, { cwd, timeoutMs: 300_000 });
     let err = "";
     p.stderr?.on("data", (d: Buffer) => (err += d.toString()));
     p.stdout?.on("data", (d: Buffer) => (err += d.toString()));

@@ -44,6 +44,7 @@
     --code-fg: #c3cdf0;
     --err-bg: #2a1519; --err-bd: #4a2028; --err-fg: #ffb4bd;
     --diff-add: #7ee2b8; --diff-del: #ffa4ad;
+    --on-good: #06231a;   /* text ON the good colour, not the good colour itself */
     --good-bg: #0f1d18;
     --r: 8px; --r-lg: 12px;
     --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.28);
@@ -78,6 +79,7 @@
     --code-fg: #d6def7;
     --err-bg: #fef2f2; --err-bd: #fecaca; --err-fg: #b91c1c;
     --diff-add: #7ee2b8; --diff-del: #ffa4ad;  /* the diff sits on the dark code surface in both themes */
+    --on-good: #ffffff;
     --good-bg: #ecfdf5;
     --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.08);
     --pop-shadow: 0 4px 12px rgba(16,24,40,.08), 0 16px 48px rgba(16,24,40,.14);
@@ -325,6 +327,49 @@
   }
   #runHint button { margin-left: 8px; height: 27px; font-size: 12px; }
 
+  /* ── Modal ────────────────────────────────────────────────*/
+  .modalScrim { position: fixed; inset: 0; z-index: 70; display: none; background: rgba(0,0,0,.45); }
+  .modalScrim.open { display: block; }
+  .modal {
+    position: fixed; z-index: 71; display: none;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: min(560px, calc(100vw - 32px)); max-height: min(80vh, 700px);
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; box-shadow: var(--pop-shadow);
+    flex-direction: column; overflow: hidden;
+  }
+  .modal.open { display: flex; }
+  .modalHead {
+    display: flex; align-items: center; gap: 10px; padding: 16px 18px;
+    border-bottom: 1px solid var(--border); flex: 0 0 auto;
+  }
+  .modalHead h2 { font-size: 15px; font-weight: 600; flex: 1; }
+  .modalHead .x { width: 28px; height: 28px; padding: 0; display: grid; place-items: center;
+    background: transparent; border: none; color: var(--muted); }
+  .modalHead .x:hover { color: var(--text); background: var(--hover); }
+  .modalBody { padding: 16px 18px 20px; overflow-y: auto; }
+  .intCard {
+    border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: 14px 15px; margin-bottom: 12px; background: var(--panel2);
+  }
+  .intCard .h { display: flex; align-items: center; gap: 9px; }
+  .intCard .h .nm { font-size: 13.5px; font-weight: 600; flex: 1; }
+  .intCard .st { font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 99px; background: var(--raised); color: var(--faint); }
+  .intCard .st.on { background: var(--good); color: var(--on-good); }
+  .intCard .d { font-size: 12px; color: var(--muted); line-height: 1.55; margin-top: 7px; }
+  .intCard label { display: block; font-size: 11px; color: var(--faint); margin: 11px 0 4px; }
+  .intCard input { width: 100%; height: 32px; }
+  .intCard .acts { display: flex; gap: 7px; margin-top: 12px; }
+  .note {
+    display: flex; gap: 9px; align-items: flex-start; font-size: 12px; line-height: 1.55;
+    padding: 11px 12px; border-radius: 10px; margin-bottom: 14px;
+    background: var(--panel2); border: 1px solid var(--border); color: var(--muted);
+  }
+  .note svg.i { margin-top: 1px; color: var(--muted); flex: 0 0 auto; }
+  .note.warn { background: var(--err-bg); border-color: var(--err-bd); color: var(--err-fg); }
+  .note.warn svg.i { color: inherit; }
+
   /* ── Toggle switch ────────────────────────────────────────*/
   .tgl { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; flex: 0 0 auto; margin-left: 4px; }
   .tgl input { position: absolute; opacity: 0; width: 0; height: 0; }
@@ -561,6 +606,18 @@
   <button id="logoutBtn" class="ghost" style="display:none" title="Sign out of your account">Sign out</button>
 </header>
 
+<!-- Integrations. Reached from the project menu; this is where a
+     project is linked to a user's own Supabase or GitHub. -->
+<div id="intScrim" class="modalScrim"></div>
+<div id="intPanel" class="modal" role="dialog" aria-modal="true" aria-labelledby="intTitle">
+  <div class="modalHead">
+    <span data-icon="plug"></span>
+    <h2 id="intTitle">Integrations</h2>
+    <button class="x" id="intClose" aria-label="Close"></button>
+  </div>
+  <div class="modalBody" id="intBody"></div>
+</div>
+
 <!-- Project menu. Opened from the brand button, top left. -->
 <div id="scrim"></div>
 <div class="menu" id="projMenu" role="menu" aria-labelledby="brandBtn">
@@ -570,6 +627,7 @@
   <button class="item" id="mDownload" role="menuitem"><span data-icon="download"></span>Download as ZIP</button>
   <button class="item" id="mPublish" role="menuitem"><span data-icon="rocket"></span>Publish to the web</button>
   <div class="sep"></div>
+  <button class="item" id="mIntegrations" role="menuitem"><span data-icon="plug"></span>Integrations<span class="hint" id="mIntCount"></span></button>
   <button class="item" id="mNew" role="menuitem"><span data-icon="plus"></span>New project</button>
   <div class="sep"></div>
   <div class="sec">Appearance</div>
@@ -728,6 +786,8 @@ const ICONS = {
   "rotate-cw": '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
   "external-link": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
   "list-checks": '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
+  "plug": '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/>',
+  "shield": '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
   "plus": '<path d="M5 12h14"/><path d="M12 5v14"/>',
   "check": '<path d="M20 6 9 17l-5-5"/>',
   "alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
@@ -2606,6 +2666,175 @@ $("mRename").onclick = async () => {
     }
   }
 };
+
+// ── Integrations ────────────────────────────────────────────
+// Where a project is linked to the user's OWN Supabase or GitHub.
+// Secrets go in and never come back: the server returns config and a
+// hasSecret flag, never the value, so nothing here can render one.
+
+const INTEGRATIONS = [
+  {
+    kind: "supabase",
+    name: "Supabase",
+    blurb: "Link this project to your own Supabase, so its data lives in a database you own and control. Leave it unlinked to use the platform's built-in storage.",
+    fields: [
+      { key: "url", label: "Project URL", placeholder: "https://xxxxx.supabase.co" },
+      { key: "ref", label: "Project ref (optional)", placeholder: "xxxxx" },
+    ],
+    secretLabel: "Service role key",
+    secretHint: "Stored encrypted and never shown again. Paste it yourself — it is not sent anywhere except your own Supabase.",
+  },
+  {
+    kind: "github",
+    name: "GitHub",
+    blurb: "Push this project to a repository you own, so it has real version control outside the platform.",
+    fields: [
+      { key: "repo", label: "Repository", placeholder: "your-name/your-repo" },
+      { key: "branch", label: "Branch", placeholder: "main" },
+    ],
+    secretLabel: "Personal access token",
+    secretHint: "Needs repo scope. Stored encrypted and never shown again.",
+  },
+];
+
+async function openIntegrations() {
+  closeMenu();
+  if (!currentProjectId) {
+    showToast({ kind: "int", title: "Save the project first — integrations are stored against it." });
+    return;
+  }
+  $("intPanel").classList.add("open");
+  $("intScrim").classList.add("open");
+  await renderIntegrations();
+}
+
+function closeIntegrations() {
+  $("intPanel").classList.remove("open");
+  $("intScrim").classList.remove("open");
+}
+
+async function renderIntegrations() {
+  const body = $("intBody");
+  body.innerHTML = '<div class="note">Loading…</div>';
+
+  let live = [];
+  try {
+    live = await fetch("/api/projects/" + currentProjectId + "/integrations").then((r) => r.json());
+  } catch { /* shown as unlinked below */ }
+  const byKind = {};
+  for (const i of (Array.isArray(live) ? live : [])) byKind[i.kind] = i;
+
+  body.innerHTML = "";
+
+  // Say plainly what the built-in storage is, so "unlinked" does not
+  // read as "broken".
+  const note = document.createElement("div");
+  note.className = "note";
+  note.innerHTML = icon("shield", "sm") +
+    "<div>Nothing here is required. Unlinked, this project saves to the platform's own storage and works normally. " +
+    "Linking moves the data somewhere you own.</div>";
+  body.appendChild(note);
+
+  for (const spec of INTEGRATIONS) {
+    const cur = byKind[spec.kind];
+    const card = document.createElement("div");
+    card.className = "intCard";
+    card.innerHTML =
+      '<div class="h">' + icon("plug", "sm") +
+      '<span class="nm"></span><span class="st"></span></div><div class="d"></div>';
+    card.querySelector(".nm").textContent = spec.name;
+    const st = card.querySelector(".st");
+    st.textContent = cur ? "Connected" : "Not connected";
+    st.classList.toggle("on", Boolean(cur));
+    card.querySelector(".d").textContent = spec.blurb;
+
+    for (const f of spec.fields) {
+      const l = document.createElement("label");
+      l.textContent = f.label;
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.placeholder = f.placeholder;
+      inp.value = (cur && cur.config && cur.config[f.key]) || "";
+      inp.dataset.field = f.key;
+      card.appendChild(l);
+      card.appendChild(inp);
+    }
+
+    const sl = document.createElement("label");
+    sl.textContent = spec.secretLabel + (cur && cur.hasSecret ? " — already saved, leave blank to keep" : "");
+    const sec = document.createElement("input");
+    sec.type = "password";
+    sec.placeholder = cur && cur.hasSecret ? "••••••••" : "Paste it here";
+    sec.autocomplete = "off";
+    sec.dataset.secret = "1";
+    card.appendChild(sl);
+    card.appendChild(sec);
+
+    const hint = document.createElement("div");
+    hint.className = "d";
+    hint.textContent = spec.secretHint;
+    card.appendChild(hint);
+
+    const acts = document.createElement("div");
+    acts.className = "acts";
+    const save = document.createElement("button");
+    save.className = "primary";
+    setBtn(save, "check", cur ? "Update" : "Connect");
+    save.onclick = () => saveIntegration(spec, card, save);
+    acts.appendChild(save);
+    if (cur) {
+      const dis = document.createElement("button");
+      setBtn(dis, "x", "Disconnect");
+      dis.onclick = () => disconnectIntegration(spec.kind);
+      acts.appendChild(dis);
+    }
+    card.appendChild(acts);
+    body.appendChild(card);
+  }
+}
+
+async function saveIntegration(spec, card, btn) {
+  const config = {};
+  for (const inp of card.querySelectorAll("input[data-field]")) {
+    config[inp.dataset.field] = inp.value.trim();
+  }
+  const secretInput = card.querySelector("input[data-secret]");
+  const secret = secretInput.value;
+
+  btn.disabled = true;
+  setBtn(btn, "check", "Saving…");
+  try {
+    const r = await fetch(
+      "/api/projects/" + currentProjectId + "/integrations/" + spec.kind,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ config, secret }),
+      }
+    );
+    if (!r.ok) throw new Error(((await r.json()) || {}).error || "Could not save");
+    secretInput.value = "";   // never leave a secret sitting in the DOM
+    await renderIntegrations();
+  } catch (err) {
+    btn.disabled = false;
+    setBtn(btn, "alert", "Failed");
+    showToast({ kind: "int", title: spec.name + " could not be linked", detail: err.message });
+  }
+}
+
+async function disconnectIntegration(kind) {
+  if (!confirm("Disconnect this integration? The stored credential is deleted.")) return;
+  try {
+    await fetch("/api/projects/" + currentProjectId + "/integrations/" + kind, { method: "DELETE" });
+    await renderIntegrations();
+  } catch (err) {
+    showToast({ kind: "int", title: "Could not disconnect", detail: err.message });
+  }
+}
+
+$("mIntegrations").onclick = openIntegrations;
+$("intClose").onclick = closeIntegrations;
+$("intScrim").onclick = closeIntegrations;
 
 applyTheme();
 paintIcons();

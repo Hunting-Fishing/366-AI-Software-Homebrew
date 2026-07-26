@@ -442,6 +442,28 @@ export const FAILURES: FailureMode[] = [
     autoFixable: true,
   },
 
+  {
+    id: "secrets-leaked-to-generated-code",
+    area: "platform",
+    title: "Generated code could read the platform's own secrets",
+    signature: /Refusing to pass|ExecutionBlocked/i,
+    cause:
+      "The Flask preview spawned generated Python with env: { ...process.env }, handing the child ANTHROPIC_API_KEY, NETLIFY_TOKEN, ACCESS_PASSWORD and SUPABASE_SERVICE_KEY — the last of which bypasses row-level security and can read and write every project belonging to every user. Three lines of generated Python would have taken all of it. Every spawn now goes through services/sandbox.ts, which builds the child environment from an allowlist and has no code path that copies process.env.",
+    fix: "Nothing to do. If a preview genuinely needs a credential, it needs a container, not an environment variable.",
+    status: "handled",
+    autoFixable: true,
+  },
+  {
+    id: "execution-blocked",
+    area: "platform",
+    title: "Server-side previews are switched off on this deployment",
+    signature: /Server-side previews are (?:off|switched off)/i,
+    cause:
+      "Python previews run generated code in the platform's own process. With user accounts enabled that means one person's code running beside everyone else's data, so it is refused by default. Credential isolation is done; process isolation — a container per run — is not, and that is the honest gate before public signups.",
+    fix: "React, web and mobile projects preview normally; they run in the browser. For Python, run the platform locally, or set ALLOW_CODE_EXECUTION=true only if the instance is isolated some other way.",
+    status: "handled",
+  },
+
   // ── Partial failures ─────────────────────────────────────
   // The dangerous category: the run reports success and something is
   // quietly missing.

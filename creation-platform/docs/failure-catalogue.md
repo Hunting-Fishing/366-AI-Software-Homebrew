@@ -14,7 +14,7 @@ Every entry has a status:
 - **Detected** — recognised and explained, but someone still has to act.
 - **Open** — known and written down. Nothing stops it yet. **This is the work queue.**
 
-Currently: **14 handled**, **23 detected**, **5 open** — 42 total.
+Currently: **16 handled**, **23 detected**, **5 open** — 44 total.
 
 ## Still open
 
@@ -407,6 +407,26 @@ Our own server, storage or deploy path.
 **Fix.** Nothing to do — the preview URL carries its own token. If this appears, the token was stale: rebuild, which issues a new one.
 
 **Recognised by.** `blocked by CORS policy|from origin 'null'|ERR_FAILED 401`
+
+#### Generated code could read the platform's own secrets
+
+**Handled** · fixed automatically · `secrets-leaked-to-generated-code`
+
+**Cause.** The Flask preview spawned generated Python with env: { ...process.env }, handing the child ANTHROPIC_API_KEY, NETLIFY_TOKEN, ACCESS_PASSWORD and SUPABASE_SERVICE_KEY — the last of which bypasses row-level security and can read and write every project belonging to every user. Three lines of generated Python would have taken all of it. Every spawn now goes through services/sandbox.ts, which builds the child environment from an allowlist and has no code path that copies process.env.
+
+**Fix.** Nothing to do. If a preview genuinely needs a credential, it needs a container, not an environment variable.
+
+**Recognised by.** `Refusing to pass|ExecutionBlocked`
+
+#### Server-side previews are switched off on this deployment
+
+**Handled** · `execution-blocked`
+
+**Cause.** Python previews run generated code in the platform's own process. With user accounts enabled that means one person's code running beside everyone else's data, so it is refused by default. Credential isolation is done; process isolation — a container per run — is not, and that is the honest gate before public signups.
+
+**Fix.** React, web and mobile projects preview normally; they run in the browser. For Python, run the platform locally, or set ALLOW_CODE_EXECUTION=true only if the instance is isolated some other way.
+
+**Recognised by.** `Server-side previews are (?:off|switched off)`
 
 ## Partial failures
 

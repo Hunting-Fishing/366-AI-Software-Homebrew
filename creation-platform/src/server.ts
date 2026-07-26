@@ -21,6 +21,8 @@ import { publishRouter } from "./routes/publish.js";
 import { videoRouter } from "./routes/video.js";
 import { availableVideoProviders } from "./providers/videos.js";
 import { FAILURES } from "./failures.js";
+import { integrationsRouter } from "./routes/integrations.js";
+import { canExecute } from "./services/sandbox.js";
 import { ffmpegAvailable, MEDIA_DIR } from "./services/studio.js";
 import { authMiddleware, loginHandler } from "./middleware/auth.js";
 import { authRouter } from "./routes/auth.js";
@@ -66,6 +68,9 @@ app.get("/api/health", (_req, res) => {
     imageProviders: availableImageProviders(),
     videoProviders: availableVideoProviders(),
     ffmpeg: ffmpegAvailable(),
+    // So the UI can say WHY a Python preview will not start, before
+    // someone waits for a build to find out.
+    execution: canExecute(),
   });
 });
 
@@ -89,6 +94,7 @@ app.get("/api/failures", (_req, res) => {
 app.use(generateRouter);
 app.use(brainRouter);
 app.use(projectsRouter(store));
+app.use(integrationsRouter);
 app.use(previewRouter);
 app.use(imageRouter);
 app.use(publishRouter);
