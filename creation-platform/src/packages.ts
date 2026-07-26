@@ -152,11 +152,16 @@ export function importMapFor(dependencies: Record<string, string>): Record<strin
   return imports;
 }
 
+/** Names a browser can actually load — natives are build-time only. */
+export function browserPackages(): string[] {
+  return CATALOGUE.filter((p) => !p.native).map((p) => p.name);
+}
+
 /** A module that explains itself instead of 404ing anonymously. */
 function notInCatalogue(name: string): string {
   const msg =
     `"${name}" is not an available package. This project can only use: ` +
-    CATALOGUE.map((p) => p.name).join(", ") +
+    browserPackages().join(", ") +
     `. Remove the import, or rebuild the feature with one of those.`;
   return "data:text/javascript," + encodeURIComponent(`throw new Error(${JSON.stringify(msg)});`);
 }

@@ -159,7 +159,13 @@ test("one react version reaches the browser", () => {
 
 test("the prompt lists the packages, because a rule alone does not stop invention", () => {
   const text = catalogueRules();
-  for (const p of CATALOGUE) assert.ok(text.includes(p.name), `${p.name} missing from the prompt`);
+  // Native packages are excluded on purpose: they are installed on a
+  // developer's machine for the mobile target, and listing them would
+  // invite the model to import them into browser code.
+  for (const p of CATALOGUE.filter((x) => !x.native)) {
+    assert.ok(text.includes(p.name), `${p.name} missing from the prompt`);
+  }
+  assert.ok(!text.includes("@capacitor/"), "native packages must stay out of the prompt");
   assert.match(text, /this list is exhaustive/i);
   assert.match(text, /Prefer no dependency/i);
 });

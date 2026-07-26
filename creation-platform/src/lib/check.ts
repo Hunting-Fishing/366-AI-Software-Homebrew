@@ -21,7 +21,7 @@ import os from "node:os";
 import path from "node:path";
 import ts from "typescript";
 import type { ProjectFile } from "./files.js";
-import { CATALOGUE, inCatalogue } from "../packages.js";
+import { browserPackages, inCatalogue } from "../packages.js";
 
 export interface CheckResult {
   ok: boolean;
@@ -262,7 +262,7 @@ function checkReact(files: ProjectFile[], capacitor = false): CheckResult {
         problems.push(
           "--- package.json ---\nThese packages are not available: " +
             unknown.map((u) => `"${u}"`).join(", ") +
-            ".\nOnly these may be used: " + CATALOGUE.map((p) => p.name).join(", ") +
+            ".\nOnly these may be used: " + browserPackages().join(", ") +
             ".\nRemove the imports, or rebuild that part with a package from the list."
         );
       }
