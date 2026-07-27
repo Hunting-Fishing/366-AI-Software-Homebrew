@@ -60,6 +60,8 @@ Restart. You'll see `👤 Accounts: ON`, and the platform now shows a **Sign in 
 
 Notes:
 - **Email confirmation is ON** for this Supabase project: new signups get a "confirm your email" message and must click the link before signing in. To let people in instantly instead, turn it off in the dashboard: **Authentication → Sign In / Providers → Email → Confirm email → off**.
+- In **Authentication → URL Configuration**, set **Site URL** to `https://designer.366industries.com` and add `https://designer.366industries.com/**` to **Redirect URLs**. On Render, set `PUBLIC_APP_URL=https://designer.366industries.com`.
+- In **Authentication → Email Templates → Confirm signup**, use the subject `Confirm your 366 AI Designer account`, change the button text to `Confirm my account`, and keep the link target as `{{ .ConfirmationURL }}`. This removes the confusing default Supabase wording while preserving the secure confirmation link.
 - Database side is already set up (done in Phase 3.3): `user_id` column on projects, a `profiles` table auto-filled on signup, and owner-only row security policies.
 - Projects saved before accounts existed have no owner; they stay visible only when running without accounts (remove SUPABASE_ANON_KEY temporarily to see them, or assign them an owner with one SQL update).
 
