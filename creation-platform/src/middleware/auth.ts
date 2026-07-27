@@ -239,6 +239,7 @@ if(new URLSearchParams(location.search).get("confirmed")==="1"){document.getElem
  * stays behind auth because it reports which providers are configured.
  */
 const PUBLIC_HEALTH_PATH = "/healthz";
+const PUBLIC_BRAND_ASSET = "/assets/366-tropical-auth-hero.svg";
 
 /**
  * Generated previews carry a separate, rotating credential in their
@@ -254,7 +255,11 @@ export async function authMiddleware(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  if (req.path === PUBLIC_HEALTH_PATH || req.path.startsWith(PREVIEW_PREFIX)) {
+  if (
+    req.path === PUBLIC_HEALTH_PATH ||
+    req.path === PUBLIC_BRAND_ASSET ||
+    req.path.startsWith(PREVIEW_PREFIX)
+  ) {
     next();
     return;
   }
