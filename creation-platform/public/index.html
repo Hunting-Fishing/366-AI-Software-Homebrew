@@ -3,685 +3,114 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>366 Creation Platform — AI App Builder</title>
+<title>366 AI Designer — Build Apps, Games, Books & Video</title>
 <meta name="description" content="Describe an app, watch it get built, edit it by chatting. Web, React, Flutter, Python, Godot games, books and video — all from one prompt.">
 <meta name="theme-color" content="#0f1117">
 <meta name="color-scheme" content="dark">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%234f61ff'/%3E%3Cpath d='M10 12H7l6-7-1 5h3l-6 7z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%234f61ff'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-  /* ── Design tokens ────────────────────────────────────────
-     Deeper, cooler neutrals than before. The old palette was flat
-     grey-blue at every level, so nothing read as raised or recessed
-     and the whole thing looked like a terminal.
-
-     Every colour lives here, including the ones that used to be
-     hard-coded further down. That is what makes a light theme a
-     matter of swapping a block rather than auditing 40 rules. */
-  :root, [data-theme="dark"] {
-    --bg: #0a0b0f;
-    --panel: #101218;
-    --panel2: #171a22;
-    --raised: #1c1f28;
-    --border: #23262f;
-    --border-soft: #1b1e25;
-    --text: #eceef4;
-    --muted: #8f97a8;
-    --faint: #666d7d;
-    --accent: #6366f1;
-    --accent-hi: #818cf8;
-    --accent-dim: #4f46e5;
-    --accent-lift: #8f99ff;
-    --good: #34d399;
-    --danger: #f87171;
-    --hover: #232733;
-    --hover-bd: #313644;
-    --head-a: #12141b;
-    --head-b: #0e1015;
-    --scroll: #262a34;
-    --scroll-hi: #333846;
-    --code-bg: #090a0e;
-    --code-fg: #c3cdf0;
-    --err-bg: #2a1519; --err-bd: #4a2028; --err-fg: #ffb4bd;
-    --diff-add: #7ee2b8; --diff-del: #ffa4ad;
-    --on-good: #06231a;   /* text ON the good colour, not the good colour itself */
-    --warn-bg: #7a5d16; --warn-fg: #ffdf9e;
-    --good-bg: #0f1d18;
-    --r: 8px; --r-lg: 12px;
-    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.28);
-    --pop-shadow: 0 4px 12px rgba(0,0,0,.4), 0 16px 48px rgba(0,0,0,.5);
-    --ring: 0 0 0 3px rgba(99,102,241,.28);
-  }
-  [data-theme="light"] {
-    --bg: #f5f6f9;
-    --panel: #ffffff;
-    --panel2: #f1f3f7;
-    --raised: #ffffff;
-    --border: #e0e3ea;
-    --border-soft: #edeff4;
-    --text: #12141a;
-    --muted: #5b6373;
-    --faint: #8b93a3;
-    --accent: #5457e5;
-    --accent-hi: #6366f1;
-    --accent-dim: #4338ca;
-    --accent-lift: #7c7ff5;
-    --good: #059669;
-    --danger: #dc2626;
-    --hover: #eef0f5;
-    --hover-bd: #ccd2dd;
-    --head-a: #ffffff;
-    --head-b: #f7f8fb;
-    --scroll: #cdd2dc;
-    --scroll-hi: #b3bac7;
-    --code-bg: #1a1c23;   /* code stays dark in both themes — reading
-                             syntax on white is the one place a light
-                             surface actively hurts. */
-    --code-fg: #d6def7;
-    --err-bg: #fef2f2; --err-bd: #fecaca; --err-fg: #b91c1c;
-    --diff-add: #7ee2b8; --diff-del: #ffa4ad;  /* the diff sits on the dark code surface in both themes */
-    --on-good: #ffffff;
-    --warn-bg: #fde68a; --warn-fg: #78350f;
-    --good-bg: #ecfdf5;
-    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.08);
-    --pop-shadow: 0 4px 12px rgba(16,24,40,.08), 0 16px 48px rgba(16,24,40,.14);
-    --ring: 0 0 0 3px rgba(99,102,241,.22);
+  :root {
+    --bg: #0f1117; --panel: #181b24; --panel2: #1f2330;
+    --border: #2a2f3f; --text: #e8eaf0; --muted: #8b91a5;
+    /* Accents darkened from #6c7bff / #8a5cf6 so white text on them
+       clears WCAG AA (4.5:1). The old pair measured 3.55 and 4.25 —
+       both failed for the Build button and user chat bubbles. */
+    --accent: #4f61ff; --accent2: #8556f6; --good: #3ecf8e;
+    /* Brighter, for focus rings only — never behind white text. */
+    --ring: #8b97ff;
   }
   * { box-sizing: border-box; margin: 0; }
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 99px; border: 2px solid var(--bg); }
-  ::-webkit-scrollbar-thumb:hover { background: var(--scroll-hi); }
-  ::-webkit-scrollbar-track { background: transparent; }
+  /* 100dvh, not 100vh: on mobile browsers 100vh includes the address
+     bar, which pushed the prompt box off the bottom of the screen. */
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
 
-  body {
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg); color: var(--text);
-    height: 100vh; height: 100dvh;
-    display: flex; flex-direction: column;
-    font-size: 14px; -webkit-font-smoothing: antialiased;
-    overflow: hidden;
-  }
+  header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
+  header h1 { font-size: 16px; font-weight: 700; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header .company-link { color: var(--muted); font-size: 12px; text-decoration: none; white-space: nowrap; }
+  header .company-link:hover { color: var(--text); }
+  header .spacer { flex: 1; }
+  select, button { font: inherit; border-radius: 8px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); padding: 7px 12px; cursor: pointer; }
+  button.primary { background: linear-gradient(90deg, var(--accent), var(--accent2)); border: none; font-weight: 600; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
 
-  /* ── Header ───────────────────────────────────────────────
-     Was wrapping to two rows and letting the history select stretch
-     halfway across the screen. Now: three fixed groups, every control
-     width-capped, one row at any width. */
-  header {
-    display: flex; align-items: center; gap: 8px;
-    padding: 0 14px; height: 52px; flex: 0 0 auto;
-    border-bottom: 1px solid var(--border);
-    background: linear-gradient(180deg, var(--head-a), var(--head-b));
-    /* nowrap, so controls compress instead of dropping to a second row.
-       Fourteen controls at their natural width exceed 1280px, which is
-       exactly what pushed the old header onto two lines. */
-    overflow-x: auto; scrollbar-width: none;
-  }
-  header::-webkit-scrollbar { display: none; }
-  .brand, header .vr, header button { flex: 0 0 auto; }
-  /* The brand is a button now — clicking it opens the project menu,
-     which is where every app of this shape puts it. */
-  .brand {
-    display: flex; align-items: center; gap: 8px; margin-right: 4px;
-    height: 36px; padding: 0 8px 0 6px; border-radius: 9px;
-    background: transparent; border: 1px solid transparent;
-  }
-  .brand:hover:not(:disabled) { background: var(--hover); border-color: var(--border); }
-  .brand.open { background: var(--hover); border-color: var(--border); }
-  .brand .mark {
-    width: 26px; height: 26px; border-radius: 7px; flex: 0 0 auto;
-    background: linear-gradient(135deg, var(--accent-hi), var(--accent-dim));
-    display: grid; place-items: center; color: #fff;
-    box-shadow: 0 2px 8px rgba(99,102,241,.35);
-  }
-  .brand .mark svg { width: 15px; height: 15px; }
-  .brand .nm { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
-  /* A <button> may only contain phrasing content, so the title is a
-     span; the real <h1> is below, hidden from sight but not from
-     screen readers. */
-  .brand .ttl { font-size: 13px; font-weight: 600; letter-spacing: -.01em; color: var(--text); white-space: nowrap; }
-  .brand .sub { font-size: 10.5px; color: var(--faint); white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
-  .brand .chev { color: var(--faint); display: flex; }
-  .brand svg.i { margin-right: 0; }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  header .spacer { flex: 1 1 auto; min-width: 4px; }
-  .vr { width: 1px; height: 22px; background: var(--border); flex: 0 0 auto; margin: 0 2px; }
+  main { flex: 1; display: flex; min-height: 0; }
+  #left { width: 380px; min-width: 300px; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--panel); }
+  #chat { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { padding: 10px 12px; border-radius: 10px; font-size: 14px; line-height: 1.45; max-width: 95%; white-space: pre-wrap; }
+  .msg.user { background: var(--accent); color: #fff; align-self: flex-end; }
+  .msg.bot  { background: var(--panel2); border: 1px solid var(--border); align-self: flex-start; }
+  .msg.err  { background: #3a1d24; border: 1px solid #6e2a3a; color: #ff9db0; align-self: flex-start; }
 
-  /* ── Icons ────────────────────────────────────────────────
-     Every icon used to be an emoji character, which is why the whole
-     thing read as Windows 95: emoji are rendered by the OS's own
-     bitmap font, at the OS's own size, in the OS's own colours. They
-     cannot inherit text colour, cannot align to a baseline, and look
-     different on every machine.
+  #inputRow { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+  #promptBox { flex: 1; resize: none; height: 64px; font: inherit; font-size: 14px; background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 10px; }
+  #promptBox:focus { outline: 2px solid var(--ring); }
+  select:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
-     These are inline SVG (Lucide, MIT). They inherit currentColor,
-     scale cleanly, and are identical everywhere. */
-  svg.i {
-    width: 15px; height: 15px; flex: 0 0 auto;
-    fill: none; stroke: currentColor; stroke-width: 2;
-    stroke-linecap: round; stroke-linejoin: round;
-    vertical-align: -2px; pointer-events: none;
-  }
-  svg.i.sm { width: 13px; height: 13px; }
-  svg.i.lg { width: 18px; height: 18px; }
-  button svg.i { margin-right: 6px; }
-  button.icon svg.i, .brand .mark svg.i, .seg svg.i, .icon-only svg.i { margin-right: 0; }
-
-  /* ── Menu popover ─────────────────────────────────────────*/
-  .menu {
-    position: fixed; z-index: 60; display: none; min-width: 260px;
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 14px; box-shadow: var(--pop-shadow);
-    padding: 6px; animation: pop .12s ease-out;
-  }
-  .menu.open { display: block; }
-  @keyframes pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
-  .menu .sec { font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
-    color: var(--faint); padding: 9px 10px 5px; }
-  .menu .sep { height: 1px; background: var(--border); margin: 5px 4px; }
-  .menu .item {
-    display: flex; align-items: center; gap: 10px; width: 100%; height: 34px;
-    padding: 0 10px; border-radius: 8px; background: transparent; border: none;
-    color: var(--text); font-size: 13px; text-align: left;
-  }
-  .menu .item:hover:not(:disabled) { background: var(--hover); border-color: transparent; }
-  .menu .item svg.i { color: var(--muted); margin-right: 0; }
-  .menu .item:hover svg.i { color: var(--text); }
-  .menu .item .hint { margin-left: auto; font-size: 11px; color: var(--faint); }
-  .menu .item.danger { color: var(--danger); }
-  .menu .item.danger svg.i { color: var(--danger); }
-  .menu .row { display: flex; align-items: center; gap: 10px; padding: 4px 10px 8px; }
-  .menu .row .lb { font-size: 13px; color: var(--text); flex: 1; }
-  .menu .meta { padding: 2px 10px 10px; font-size: 11.5px; color: var(--faint); line-height: 1.5; }
-  /* Appearance picker — same segmented pattern as the view switch, so
-     the two read as the same kind of control. */
-  .themeSeg { display: inline-flex; gap: 2px; padding: 3px; background: var(--bg);
-    border: 1px solid var(--border); border-radius: 9px; }
-  .themeSeg button {
-    width: 34px; height: 26px; padding: 0; border-radius: 6px; display: grid; place-items: center;
-    background: transparent; border: none; color: var(--muted);
-  }
-  .themeSeg button:hover:not(.on) { background: var(--raised); color: var(--text); }
-  .themeSeg button.on { background: var(--raised); color: var(--text);
-    box-shadow: 0 1px 2px rgba(0,0,0,.3), 0 0 0 1px var(--border) inset; }
-  #scrim { position: fixed; inset: 0; z-index: 55; display: none; }
-  #scrim.open { display: block; }
-
-  /* Controls */
-  select, button, input[type="text"] {
-    font: inherit; font-size: 13px; color: var(--text);
-    background: var(--raised); border: 1px solid var(--border);
-    border-radius: var(--r); padding: 6px 10px; height: 32px;
-    cursor: pointer; transition: background .13s, border-color .13s, transform .08s;
-    white-space: nowrap;
-  }
-  select {
-    appearance: none; padding-right: 26px;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%238f97a8' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>");
-    background-repeat: no-repeat; background-position: right 9px center;
-    /* min-width lets them shrink past their content on a narrow window;
-       without it a long project name forces a horizontal scrollbar. */
-    max-width: 190px; min-width: 96px; text-overflow: ellipsis;
-  }
-  select:hover, button:hover:not(:disabled) { background: var(--hover); border-color: var(--hover-bd); }
-  button:active:not(:disabled) { transform: translateY(1px); }
-  button:disabled { opacity: .38; cursor: not-allowed; }
-  select:focus-visible, button:focus-visible, textarea:focus-visible {
-    outline: none; box-shadow: var(--ring); border-color: var(--accent);
-  }
-  button.primary {
-    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-    border-color: transparent; color: #fff; font-weight: 500;
-    box-shadow: 0 1px 2px rgba(0,0,0,.3), 0 0 0 1px rgba(129,140,248,.25) inset;
-  }
-  button.primary:hover:not(:disabled) { background: linear-gradient(180deg, var(--accent-lift), var(--accent)); }
-  button.ghost { background: transparent; border-color: transparent; color: var(--muted); }
-  button.ghost:hover:not(:disabled) { background: var(--raised); color: var(--text); }
-
-  /* ── Layout ───────────────────────────────────────────────*/
-  main { flex: 1 1 auto; display: flex; min-height: 0; }
-  #left {
-    width: 400px; min-width: 320px; flex: 0 0 auto;
-    display: flex; flex-direction: column;
-    border-right: 1px solid var(--border); background: var(--panel);
-  }
-  #chat { flex: 1 1 auto; overflow-y: auto; padding: 16px 14px; display: flex; flex-direction: column; gap: 10px; }
-
-  .msg {
-    padding: 10px 13px; border-radius: 12px; font-size: 13.5px;
-    line-height: 1.55; max-width: 92%; white-space: pre-wrap; word-break: break-word;
-  }
-  .msg.user {
-    background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-    color: #fff; align-self: flex-end; border-bottom-right-radius: 4px;
-  }
-  .msg.bot {
-    background: var(--panel2); border: 1px solid var(--border-soft);
-    align-self: flex-start; border-bottom-left-radius: 4px;
-  }
-  .msg.err {
-    background: var(--err-bg); border: 1px solid var(--err-bd); color: var(--err-fg);
-    align-self: flex-start; font-size: 13px;
-  }
-  .msg button { margin-top: 8px; font-size: 12px; height: 28px; }
-
-  #inputRow { padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; background: var(--panel); }
-  #promptBox {
-    flex: 1; resize: none; height: 62px; font: inherit; font-size: 13.5px; line-height: 1.5;
-    background: var(--raised); border: 1px solid var(--border); border-radius: var(--r-lg);
-    color: var(--text); padding: 10px 12px; transition: border-color .13s;
-  }
-  #promptBox::placeholder { color: var(--faint); }
-  #promptBox:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
-  #sendBtn { height: 62px; padding: 0 20px; border-radius: var(--r-lg); font-size: 14px; }
-
-  /* ── Right pane ───────────────────────────────────────────*/
-  #right { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; background: var(--bg); }
-  #toolbar {
-    display: flex; gap: 8px; align-items: center; padding: 8px 12px;
-    border-bottom: 1px solid var(--border); background: var(--panel); flex: 0 0 auto;
-  }
-  /* Segmented control — one recessed track, the active tab raised out
-     of it. Two separate buttons never read as "pick one of these". */
-  .seg {
-    display: inline-flex; gap: 2px; padding: 3px;
-    background: var(--bg); border: 1px solid var(--border); border-radius: 9px;
-  }
-  .seg button {
-    height: 27px; font-size: 12.5px; padding: 0 13px; border-radius: 6px;
-    background: transparent; border: none; color: var(--muted); font-weight: 500;
-  }
-  .seg button:hover:not(.on) { background: var(--raised); color: var(--text); }
-  .seg button.on {
-    background: var(--raised); color: var(--text);
-    box-shadow: 0 1px 2px rgba(0,0,0,.35), 0 0 0 1px var(--border) inset;
-  }
-  .seg .badge {
-    margin-left: 6px; font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums;
-    background: var(--border); color: var(--muted); border-radius: 99px; padding: 1px 5px;
-  }
-  .seg .badge:empty { display: none; }
-  .seg button.on .badge { background: var(--accent); color: #fff; }
+  #right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
   #toolbar .status { font-size: 12px; color: var(--muted); margin-left: auto; }
-  #toolbar button.icon {
-    width: 30px; height: 30px; padding: 0; font-size: 14px;
-    display: grid; place-items: center; color: var(--muted);
-  }
-  #toolbar button.icon:hover { color: var(--text); }
   #preview { flex: 1; border: none; background: #fff; }
+  /* Mobile target: preview at phone width. A phone app shown full-bleed
+     across a desktop pane looks nothing like the thing you are building. */
   #preview.phone {
     align-self: center; width: 100%; max-width: 400px;
-    border: 1px solid var(--border); border-radius: 20px;
-    margin: 14px 0; box-shadow: 0 0 0 8px var(--head-b), var(--shadow);
+    border: 1px solid var(--border); border-radius: 18px;
+    margin: 12px 0; box-shadow: 0 0 0 6px #0b0d13;
   }
-
-  #codeWrap { flex: 1; display: none; flex-direction: column; min-height: 0; background: var(--code-bg); }
-  #fileTabs { display: flex; gap: 3px; padding: 8px 12px 0; flex-wrap: wrap; flex: 0 0 auto; }
-  #fileTabs button { font-size: 11.5px; height: 26px; padding: 0 9px; border-radius: 6px 6px 0 0; color: var(--muted); background: var(--panel2); }
+  #codeWrap { flex: 1; display: none; flex-direction: column; min-height: 0; background: #0b0d13; }
+  #fileTabs { display: flex; gap: 4px; padding: 8px 12px 0; flex-wrap: wrap; }
+  #fileTabs button { font-size: 12px; padding: 5px 10px; border-radius: 6px 6px 0 0; }
   #fileTabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  /* What the last build touched. Colour beats reading 29 file names. */
-  #fileTabs button { display: inline-flex; align-items: center; gap: 6px; }
-  #fileTabs button .dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }
-  #fileTabs button.ch-added { color: var(--good); border-color: var(--good); }
-  #fileTabs button.ch-added .dot { background: var(--good); }
-  #fileTabs button.ch-modified { color: var(--accent-hi); border-color: var(--accent-hi); }
-  #fileTabs button.ch-modified .dot { background: var(--accent-hi); }
-  #fileTabs button.ch-removed { color: var(--danger); text-decoration: line-through; opacity: .6; }
-  #fileTabs button.active.ch-added, #fileTabs button.active.ch-modified { color: #fff; }
-  /* ── Streaming code view ──────────────────────────────────*/
-  .sLead { color: var(--muted); font-style: italic; margin-bottom: 14px; white-space: pre-wrap; }
-  .sFile {
-    position: sticky; top: 0; margin: 16px 0 6px; padding: 6px 10px; border-radius: 6px;
-    font-size: 11.5px; font-weight: 600; letter-spacing: .01em; z-index: 1;
-  }
-  .sFile:first-child { margin-top: 0; }
-  .sFile.isNew { background: rgba(52,211,153,.14); color: var(--diff-add); }
-  .sFile.isMod { background: rgba(99,102,241,.16); color: var(--accent-hi); }
-  .sBody { margin-bottom: 4px; }
-  .sBody .ln { display: block; padding: 0 4px; white-space: pre; }
-  .sBody .ln.a { background: rgba(52,211,153,.11); color: var(--diff-add); }
-  .sBody .ln.r { background: rgba(248,113,113,.11); color: var(--diff-del); }
-  .sBody .skip { padding: 4px; font-size: 11px; color: var(--faint); }
+  /* overflow-wrap:anywhere breaks only when a line genuinely cannot
+     fit. word-break:break-all was splitting every identifier mid-word. */
+  #codeView { flex: 1; overflow: auto; margin: 0; padding: 16px; font: 12px/1.5 ui-monospace, Consolas, monospace; color: #c9d4ff; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #runHint { display: none; padding: 10px 14px; font-size: 13px; color: var(--good); background: #12241c; border-top: 1px solid var(--border); }
 
-  /* Size on the tab, and the strip that offers to fix it. */
-  #fileTabs .len {
-    font-size: 10px; font-variant-numeric: tabular-nums; padding: 1px 5px;
-    border-radius: 99px; background: var(--border); color: var(--faint);
-  }
-  #fileTabs .len.watch { background: var(--warn-bg); color: var(--warn-fg); }
-  #fileTabs .len.over { background: var(--danger); color: #fff; }
-  #healthBar {
-    display: none; align-items: center; gap: 9px; flex: 0 0 auto;
-    padding: 9px 14px; font-size: 12px; line-height: 1.5;
-    background: var(--err-bg); border-bottom: 1px solid var(--err-bd); color: var(--err-fg);
-  }
-  #healthBar .t { flex: 1; }
-  #healthBar button { height: 26px; font-size: 11.5px; padding: 0 10px; flex: 0 0 auto; }
-  #healthBar svg.i { flex: 0 0 auto; }
+  #empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--muted); background: var(--bg); }
+  #empty .big { font-size: 40px; }
+  #empty .ideas { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 0 30px; }
+  #empty .ideas button { font-size: 13px; }
 
-  #codeView {
-    flex: 1; overflow: auto; margin: 0; padding: 16px 18px;
-    font: 12.5px/1.65 ui-monospace, "SF Mono", Consolas, monospace;
-    color: var(--code-fg); white-space: pre-wrap; overflow-wrap: anywhere;
-  }
-  #runHint {
-    display: none; padding: 10px 14px; font-size: 12.5px; color: var(--good);
-    background: var(--good-bg); border-top: 1px solid var(--border); flex: 0 0 auto;
-  }
-  #runHint button { margin-left: 8px; height: 27px; font-size: 12px; }
-
-  /* ── Modal ────────────────────────────────────────────────*/
-  .modalScrim { position: fixed; inset: 0; z-index: 70; display: none; background: rgba(0,0,0,.45); }
-  .modalScrim.open { display: block; }
-  .modal {
-    position: fixed; z-index: 71; display: none;
-    top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: min(560px, calc(100vw - 32px)); max-height: min(80vh, 700px);
-    /* wide is the connector browser: a sidebar plus a two-column grid
-       needs room, and a cramped catalogue is worse than a list. */
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 16px; box-shadow: var(--pop-shadow);
-    flex-direction: column; overflow: hidden;
-  }
-  .modal.open { display: flex; }
-  .modalHead {
-    display: flex; align-items: center; gap: 10px; padding: 16px 18px;
-    border-bottom: 1px solid var(--border); flex: 0 0 auto;
-  }
-  .modalHead h2 { font-size: 15px; font-weight: 600; flex: 1; }
-  .modalHead .x { width: 28px; height: 28px; padding: 0; display: grid; place-items: center;
-    background: transparent; border: none; color: var(--muted); }
-  .modalHead .x:hover { color: var(--text); background: var(--hover); }
-  .modal.wide { width: min(1040px, calc(100vw - 32px)); max-height: min(86vh, 820px); }
-  .modalHead .crumb { font-size: 13px; color: var(--muted); }
-  .modalHead .crumb:not(:empty)::before { content: "/"; margin-right: 9px; color: var(--faint); }
-  .split { display: flex; min-height: 0; flex: 1; }
-  .side {
-    width: 200px; flex: 0 0 auto; border-right: 1px solid var(--border);
-    padding: 12px; overflow-y: auto; background: var(--panel2);
-  }
-  .side input { width: 100%; height: 32px; margin-bottom: 12px; }
-  .side .grp { font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
-    color: var(--faint); padding: 12px 8px 6px; }
-  .side button {
-    display: flex; width: 100%; align-items: center; height: 30px; padding: 0 9px;
-    background: transparent; border: none; border-radius: 7px;
-    color: var(--muted); font-size: 12.5px; text-align: left; margin-bottom: 1px;
-  }
-  .side button .n { flex: 1; }
-  .side button .c { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
-  .side button:hover { background: var(--hover); color: var(--text); border-color: transparent; }
-  .side button.on { background: var(--raised); color: var(--text); font-weight: 500; }
-  .modalBody { padding: 16px 18px 20px; overflow-y: auto; flex: 1; min-width: 0; }
-
-  /* ── Connector cards ──────────────────────────────────────*/
-  .conGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
-  .conCard {
-    display: flex; gap: 12px; align-items: flex-start; text-align: left;
-    padding: 13px 14px; height: auto; border-radius: var(--r-lg);
-    background: var(--panel); border: 1px solid var(--border); color: var(--text);
-    transition: border-color .14s, transform .12s, background .14s;
-  }
-  .conCard:hover { border-color: var(--accent); background: var(--panel2); transform: translateY(-1px); }
-  /* Brand logos are not ours to ship, so a tinted monogram stands in.
-     Consistent, legal, and it still makes the grid scannable. */
-  .tile {
-    width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto;
-    display: grid; place-items: center; font-size: 11.5px; font-weight: 700;
-    letter-spacing: .02em; color: #fff; position: relative;
-  }
-  .tile .pip {
-    position: absolute; top: -2px; right: -2px; width: 9px; height: 9px;
-    border-radius: 50%; border: 2px solid var(--panel);
-  }
-  .conCard .bd { min-width: 0; flex: 1; }
-  .conCard .nm { font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 7px; }
-  .conCard .bl { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 3px; }
-  .pill {
-    font-size: 9.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
-    padding: 2px 7px; border-radius: 99px; background: var(--raised); color: var(--faint);
-    border: 1px solid var(--border); white-space: nowrap;
-  }
-  .pill.ok { background: var(--good); color: var(--on-good); border-color: transparent; }
-  .conHead { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
-  .conHead .tile { width: 46px; height: 46px; font-size: 15px; border-radius: 12px; }
-  .conHead h3 { font-size: 17px; font-weight: 600; }
-  .conHead .sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
-  .sect { font-size: 13.5px; font-weight: 600; margin: 22px 0 8px; }
-  .sect:first-of-type { margin-top: 0; }
-  .lead { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
-  .back { height: 28px; font-size: 12px; padding: 0 10px; margin-bottom: 14px; }
-  .empty2 {
-    border: 1px dashed var(--border); border-radius: var(--r-lg);
-    padding: 26px; text-align: center; font-size: 12.5px; color: var(--faint);
-  }
-  .intCard {
-    border: 1px solid var(--border); border-radius: var(--r-lg);
-    padding: 14px 15px; margin-bottom: 12px; background: var(--panel2);
-  }
-  .intCard .h { display: flex; align-items: center; gap: 9px; }
-  .intCard .h .nm { font-size: 13.5px; font-weight: 600; flex: 1; }
-  .intCard .st { font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
-    padding: 2px 8px; border-radius: 99px; background: var(--raised); color: var(--faint); }
-  .intCard .st.on { background: var(--good); color: var(--on-good); }
-  .intCard .d { font-size: 12px; color: var(--muted); line-height: 1.55; margin-top: 7px; }
-  .intCard label { display: block; font-size: 11px; color: var(--faint); margin: 11px 0 4px; }
-  .intCard input { width: 100%; height: 32px; }
-  .intCard .acts { display: flex; gap: 7px; margin-top: 12px; }
-  .note {
-    display: flex; gap: 9px; align-items: flex-start; font-size: 12px; line-height: 1.55;
-    padding: 11px 12px; border-radius: 10px; margin-bottom: 14px;
-    background: var(--panel2); border: 1px solid var(--border); color: var(--muted);
-  }
-  .note svg.i { margin-top: 1px; color: var(--muted); flex: 0 0 auto; }
-  .note.warn { background: var(--err-bg); border-color: var(--err-bd); color: var(--err-fg); }
-  .note.warn svg.i { color: inherit; }
-
-  /* ── Toggle switch ────────────────────────────────────────*/
-  .tgl { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; flex: 0 0 auto; margin-left: 4px; }
-  .tgl input { position: absolute; opacity: 0; width: 0; height: 0; }
-  .tgl .track {
-    width: 30px; height: 17px; border-radius: 99px; background: var(--raised);
-    border: 1px solid var(--border); position: relative; transition: background .15s, border-color .15s;
-  }
-  .tgl .knob {
-    position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%;
-    background: var(--faint); transition: transform .15s, background .15s;
-  }
-  .tgl input:checked + .track { background: var(--accent); border-color: var(--accent); }
-  .tgl input:checked + .track .knob { transform: translateX(13px); background: #fff; }
-  .tgl input:focus-visible + .track { box-shadow: var(--ring); }
-  .tgl .lb { font-size: 12px; color: var(--muted); white-space: nowrap; }
-  .tgl:hover .lb { color: var(--text); }
-
-  /* ── Build history ────────────────────────────────────────*/
-  #histWrap { flex: 1; display: none; flex-direction: column; min-height: 0; background: var(--bg); }
-  #histHead {
-    display: flex; align-items: baseline; gap: 9px; padding: 14px 18px 10px; flex: 0 0 auto;
-    border-bottom: 1px solid var(--border);
-  }
-  #histHead .h { font-size: 13px; font-weight: 600; }
-  #histHead .sub { font-size: 11.5px; color: var(--faint); }
-  #histList { flex: 1; overflow-y: auto; padding: 14px 18px 24px; }
-  #histList .empty { color: var(--muted); font-size: 13px; padding: 18px 0; }
-
-  /* One entry per build. The rail down the left makes the order
-     obvious without numbering every row. */
-  .ver { position: relative; padding: 0 0 4px 22px; }
-  .ver::before {
-    content: ""; position: absolute; left: 4px; top: 16px; bottom: -4px; width: 1px; background: var(--border);
-  }
-  .ver:last-child::before { display: none; }
-  .ver .dot {
-    position: absolute; left: 0; top: 9px; width: 9px; height: 9px; border-radius: 50%;
-    background: var(--panel2); border: 2px solid var(--border);
-  }
-  .ver.head .dot { background: var(--accent); border-color: var(--accent); }
-  .ver .card {
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg);
-    padding: 11px 13px; margin-bottom: 10px; transition: border-color .14s;
-  }
-  .ver .card:hover { border-color: var(--hover-bd); }
-  .ver .top { display: flex; align-items: baseline; gap: 8px; }
-  .ver .v { font-size: 10.5px; font-weight: 600; color: var(--faint); font-variant-numeric: tabular-nums; }
-  .ver .when { font-size: 10.5px; color: var(--faint); margin-left: auto; white-space: nowrap; }
-  .ver .now { font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
-    padding: 2px 6px; border-radius: 99px; background: var(--accent); color: #fff; }
-  /* The prompt is the thing you scan for, so it gets the weight. */
-  .ver .prompt { font-size: 13px; line-height: 1.5; margin-top: 5px; color: var(--text); }
-  .ver .files { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
-  .ver .f {
-    font: 11px ui-monospace, "SF Mono", Consolas, monospace;
-    background: var(--panel2); border: 1px solid var(--border-soft);
-    border-radius: 5px; padding: 2px 6px; color: var(--muted);
-  }
-  .ver .f.add { color: var(--good); border-color: var(--good); }
-  .ver .f.del { color: var(--danger); border-color: var(--danger); }
-  .ver .acts { display: flex; gap: 6px; margin-top: 10px; }
-  .ver .acts button { height: 26px; font-size: 11.5px; padding: 0 9px; }
-  .ver .diff {
-    display: none; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px;
-    overflow: hidden; background: var(--code-bg);
-  }
-  .ver .diff.open { display: block; }
-  .ver .diff .fh {
-    font: 11px ui-monospace, Consolas, monospace; padding: 6px 10px;
-    background: var(--panel2); color: var(--muted); border-bottom: 1px solid var(--border);
-  }
-  .ver .diff pre {
-    margin: 0; padding: 8px 0; overflow-x: auto; max-height: 320px;
-    font: 11.5px/1.55 ui-monospace, "SF Mono", Consolas, monospace; color: var(--code-fg);
-  }
-  .ver .diff .ln { display: block; padding: 0 10px; white-space: pre; }
-  .ver .diff .ln.a { background: rgba(52,211,153,.11); color: var(--diff-add); }
-  .ver .diff .ln.r { background: rgba(248,113,113,.11); color: var(--diff-del); }
-  .ver .diff .ln.h { color: var(--faint); }
-  .ver .diff .skip { padding: 5px 10px; font-size: 11px; color: var(--faint); background: var(--panel2); }
-
-  /* ── Empty state ──────────────────────────────────────────*/
-  #empty {
-    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 14px; color: var(--muted); background: var(--bg); overflow-y: auto; padding: 32px 24px;
-  }
-  #empty .big { color: var(--faint); }
-  #empty .big svg.i { width: 40px; height: 40px; stroke-width: 1.4; }
-  #empty .ideas { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 520px; }
-  #empty .ideas button { font-size: 12.5px; height: 30px; border-radius: 99px; }
-
-  #recent { width: 100%; max-width: 640px; margin-top: 10px; }
-  #recent h3 { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin-bottom: 12px; text-align: center; }
-  #recent .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
-  #recent .card {
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg);
-    padding: 13px 15px; cursor: pointer; text-align: left; color: var(--text); height: auto;
-    transition: border-color .14s, transform .14s, background .14s;
-  }
-  #recent .card:hover { border-color: var(--accent); background: var(--panel2); transform: translateY(-2px); }
-  #recent .card .nm { font-size: 13.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #recent .card .dt { font-size: 11px; color: var(--faint); margin-top: 5px; }
-
-  /* ── Boot progress ────────────────────────────────────────*/
-  #booting { flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: var(--bg); padding: 0 32px; }
-  #booting .phase { font-size: 14px; color: var(--text); text-align: center; }
-  #booting .sub { font-size: 12px; color: var(--muted); text-align: center; max-width: 400px; line-height: 1.5; }
-  #booting .track { width: 100%; max-width: 300px; height: 5px; background: var(--raised); border-radius: 99px; overflow: hidden; }
-  #booting .bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-hi)); border-radius: 99px; transition: width .4s ease; }
-  #booting .pct { font-size: 26px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-
-  /* ── Build plan ───────────────────────────────────────────*/
-  #brain { border-top: 1px solid var(--border); background: var(--panel2); max-height: 40%; overflow-y: auto; display: none; flex: 0 0 auto; }
-  #brainHead { display: flex; align-items: center; gap: 8px; padding: 10px 14px; position: sticky; top: 0; background: var(--panel2); cursor: pointer; z-index: 1; }
-  #brainHead .t { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; color: var(--faint); flex: 1; }
-  #brainHead .chev { color: var(--faint); display: flex; transition: transform .15s; }
-  #brainHead .chev.up { transform: rotate(180deg); }
-  #brainHead button { height: 24px; font-size: 11px; padding: 0 8px; }
-  #brainBody { padding: 0 14px 12px; }
-  .phase { border-left: 2px solid var(--border); padding: 5px 0 5px 11px; margin-bottom: 11px; }
-  .phase.active { border-left-color: var(--accent); }
-  .phase.done { opacity: .5; }
-  .phase .ph { display: flex; align-items: center; gap: 7px; }
-  .phase .nm { font-size: 12.5px; font-weight: 500; color: var(--text); }
-  .phase .pill { font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; background: var(--accent); color: #fff; }
-  .phase .goal { font-size: 11.5px; color: var(--muted); margin: 3px 0 7px; line-height: 1.45; }
-  .phase ul { list-style: none; margin: 0; padding: 0; }
-  .phase li { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: flex-start; padding: 3px 0; line-height: 1.45; }
-  .phase li.done { text-decoration: line-through; opacity: .55; }
-  .phase li .bx { flex: 0 0 auto; margin-top: 2px; accent-color: var(--accent); }
-
-  /* ── Alert strip ──────────────────────────────────────────
-     Above the prompt box, sharing the slot with the suggestions —
-     the spot your eye is already on when you are about to type. */
-  #alerts { padding: 0 12px; flex: 0 0 auto; }
-  #alerts:not(:empty) { padding: 12px 12px 0; }
-  .toast {
-    display: flex; gap: 10px; align-items: flex-start;
-    border-radius: 10px; padding: 10px 11px; margin-bottom: 8px;
-    background: var(--err-bg); border: 1px solid var(--err-bd); color: var(--err-fg);
-    animation: rise .16s ease-out;
-  }
-  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
-  .toast svg.i { margin: 1px 0 0; color: inherit; }
-  .toast .body { flex: 1; min-width: 0; }
-  .toast .t { font-size: 12.5px; font-weight: 600; }
-  .toast .d {
-    font-size: 11.5px; line-height: 1.5; margin-top: 3px; opacity: .9;
-    font-family: ui-monospace, "SF Mono", Consolas, monospace;
-    word-break: break-word; max-height: 76px; overflow: auto;
-  }
-  .toast .acts { display: flex; gap: 6px; margin-top: 9px; }
-  .toast .acts button { height: 27px; font-size: 12px; padding: 0 11px; }
-  .toast .acts button.fix {
-    background: var(--danger); border-color: transparent; color: #fff; font-weight: 500;
-  }
-  .toast .acts button.fix:hover:not(:disabled) { background: var(--danger); filter: brightness(1.1); }
-  .toast .x { background: transparent; border: none; color: inherit; opacity: .6; width: 22px; height: 22px; padding: 0; }
-  .toast .x:hover { opacity: 1; background: transparent; border-color: transparent; }
-  .toast.info { background: var(--good-bg); border-color: var(--border); color: var(--good); }
-
-  /* ── Next-step chips ──────────────────────────────────────*/
-  #suggest { padding: 12px 14px; border-top: 1px solid var(--border); display: none; background: var(--panel); flex: 0 0 auto; }
-  #suggest .lbl { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin-bottom: 9px; }
-  #suggest .chip {
-    display: block; width: 100%; text-align: left; font-size: 12.5px; line-height: 1.5; height: auto;
-    background: var(--raised); border: 1px solid var(--border); border-radius: 10px;
-    padding: 9px 11px; margin-bottom: 6px; color: var(--text);
-    transition: border-color .14s, background .14s, transform .1s;
-  }
-  #suggest .chip:hover { border-color: var(--accent); background: var(--panel2); transform: translateX(2px); }
-
-  .spinner {
-    display: inline-block; width: 13px; height: 13px;
-    border: 2px solid var(--border); border-top-color: var(--accent);
-    border-radius: 50%; animation: spin .7s linear infinite;
-    vertical-align: -2px; margin-right: 7px;
-  }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--muted); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  @media (max-width: 900px) {
+  @media (max-width: 800px) {
     main { flex-direction: column; }
-    #left { width: 100%; height: 46%; min-height: 220px; border-right: none; border-bottom: 1px solid var(--border); }
+    #left {
+      width: 100%; height: 45%; min-height: 220px;
+      border-right: none; border-bottom: 1px solid var(--border);
+    }
     #right { min-height: 260px; }
-    header { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+
+    /* The header holds up to 11 controls. Left to wrap, it stacked
+       into ~6 rows on a phone and ate most of the viewport before
+       the app even started. One scrollable row instead. */
+    header {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      gap: 8px;
+    }
     header::-webkit-scrollbar { display: none; }
     header > * { flex-shrink: 0; }
     header .spacer { display: none; }
-    .brand .nm { display: none; }
-    select { max-width: 130px; }
+    /* Drop the wordmark on phones — saves ~150px of a 360px screen.
+       Branding survives via the favicon and <title>. */
+    header h1 { display: none; }
+
     #toolbar { flex-wrap: nowrap; overflow-x: auto; }
     #toolbar > * { flex-shrink: 0; }
-    #promptBox, #sendBtn { height: 52px; }
+    #promptBox { height: 52px; }
   }
 </style>
 </head>
 <body>
-<h1 class="sr">366 Creation Platform — AI app builder</h1>
 
 <header>
-  <button class="brand" id="brandBtn" aria-haspopup="menu" aria-expanded="false" title="Project menu">
-    <span class="mark" data-icon="zap"></span>
-    <span class="nm"><span class="ttl" id="brandName">Creation Platform</span><span class="sub" id="brandSub">No project open</span></span>
-    <span class="chev" data-icon="chevron-down" data-size="sm"></span>
-  </button>
-  <div class="vr"></div>
+  <h1>⚡ 366 AI Designer</h1>
+  <a class="company-link" href="https://366industries.com/ai-designer" title="Return to the 366 AI Designer product page">by 366 Industries</a>
+  <span class="spacer"></span>
   <select id="targetSel" title="What kind of code to generate"></select>
   <select id="styleSel" title="Visual style for movies" style="display:none">
     <option value="cinematic">🎬 Cinematic</option>
@@ -690,7 +119,7 @@
     <option value="space">🚀 Space flight</option>
     <option value="toys">🧱 Toy / Lego stop-motion</option>
   </select>
-  <button id="photoMovieBtn" style="display:none" title="Turn your own photos into a movie"><span data-icon="image"></span>Photo Movie</button>
+  <button id="photoMovieBtn" style="display:none" title="Turn your own photos into a movie">📸 Photo Movie</button>
   <select id="bookSel" title="Book type" style="display:none">
     <option value="picture">📖 Picture book</option>
     <option value="coloring">🖍 Coloring book</option>
@@ -699,82 +128,19 @@
   </select>
   <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
   <select id="providerSel" title="Which AI builds it"></select>
-
-  <span class="spacer"></span>
-
-  <select id="projectSel" title="Open a saved project"><option value="">Open project…</option></select>
-  <div class="vr"></div>
-  <button id="saveBtn" disabled title="Save now"><span data-icon="save"></span>Save</button>
-  <button id="downloadBtn" class="icon-only" disabled title="Download as a ZIP" aria-label="Download as a ZIP"><span data-icon="download"></span></button>
-  <button id="publishBtn" disabled title="Put this app on the public web (needs NETLIFY_TOKEN)"><span data-icon="rocket"></span>Publish</button>
-  <div class="vr"></div>
-  <span id="userChip" style="display:none;font-size:12px;color:var(--muted)"></span>
-  <button id="logoutBtn" class="ghost" style="display:none" title="Sign out of your account">Sign out</button>
+  <select id="projectSel" title="Load a saved project"><option value="">Load project…</option></select>
+  <select id="historySel" title="Roll this project back to an earlier version" style="display:none"><option value="">🕘 History…</option></select>
+  <button id="saveBtn" disabled>💾 Save</button>
+  <button id="downloadBtn" disabled>⬇ Download</button>
+  <button id="publishBtn" disabled title="Put this app on the public web (needs NETLIFY_TOKEN in .env)">🚀 Publish</button>
+  <span id="userChip" style="display:none;font-size:12px;color:#9aa3b8;margin-left:4px"></span>
+  <button id="logoutBtn" style="display:none" title="Sign out of your account">Sign out</button>
 </header>
-
-<!-- Integrations. Reached from the project menu; this is where a
-     project is linked to a user's own Supabase or GitHub. -->
-<div id="intScrim" class="modalScrim"></div>
-<div id="intPanel" class="modal wide" role="dialog" aria-modal="true" aria-labelledby="intTitle">
-  <div class="modalHead">
-    <span data-icon="plug"></span>
-    <h2 id="intTitle">Connectors</h2>
-    <span class="crumb" id="intCrumb"></span>
-    <button class="x" id="intClose" aria-label="Close"></button>
-  </div>
-  <div class="split">
-    <aside class="side">
-      <input type="text" id="conSearch" placeholder="Search" autocomplete="off">
-      <nav id="conNav"></nav>
-    </aside>
-    <div class="modalBody" id="intBody"></div>
-  </div>
-</div>
-
-<!-- Project menu. Opened from the brand button, top left. -->
-<div id="scrim"></div>
-<div class="menu" id="projMenu" role="menu" aria-labelledby="brandBtn">
-  <div class="sec" id="menuTitle">Project</div>
-  <button class="item" id="mRename" role="menuitem"><span data-icon="pencil"></span>Rename project</button>
-  <button class="item" id="mSave" role="menuitem"><span data-icon="save"></span>Save now<span class="hint">Ctrl S</span></button>
-  <button class="item" id="mDownload" role="menuitem"><span data-icon="download"></span>Download as ZIP</button>
-  <button class="item" id="mPublish" role="menuitem"><span data-icon="rocket"></span>Publish to the web</button>
-  <div class="sep"></div>
-  <button class="item" id="mIntegrations" role="menuitem"><span data-icon="plug"></span>Integrations<span class="hint" id="mIntCount"></span></button>
-  <button class="item" id="mNew" role="menuitem"><span data-icon="plus"></span>New project</button>
-  <div class="sep"></div>
-  <div class="sec">Appearance</div>
-  <div class="row">
-    <span class="lb">Theme</span>
-    <div class="themeSeg" id="themeSeg" role="group" aria-label="Theme">
-      <button data-theme-set="light" title="Light" aria-label="Light"><span data-icon="sun"></span></button>
-      <button data-theme-set="dark" title="Dark" aria-label="Dark"><span data-icon="moon"></span></button>
-      <button data-theme-set="system" title="Match system" aria-label="Match system"><span data-icon="monitor"></span></button>
-    </div>
-  </div>
-  <div class="sep"></div>
-  <div class="sec">Details</div>
-  <div class="meta" id="menuMeta">Nothing open yet.</div>
-</div>
 
 <main>
   <div id="left">
     <div id="chat">
-      <div class="msg bot">Hi! Pick a language target (Web = instant preview, Flutter = native mobile, Python = Flask), describe what you want, and watch the code get written live. Then tell me what to change.</div>
-    </div>
-    <div id="brain">
-      <div id="brainHead"><span data-icon="list-checks" data-size="sm" style="color:var(--faint)"></span><span class="t">BUILD PLAN</span><span class="chev" id="brainChev" data-icon="chevron-down" data-size="sm"></span>
-        <button id="addPhaseBtn" title="Add a phase" style="font-size:11px;padding:3px 8px"><span data-icon="plus" data-size="sm"></span>Phase</button>
-      </div>
-      <div id="brainBody"></div>
-    </div>
-    <!-- Alerts sit directly above the prompt box, in the same slot as
-         the suggestions: the place you are already looking when you
-         are about to type. An error shown anywhere else gets missed. -->
-    <div id="alerts"></div>
-    <div id="suggest">
-      <div class="lbl">Next steps for this phase</div>
-      <div id="suggestList"></div>
+      <div class="msg bot">Welcome to 366 AI Designer. Pick a target, describe what you want, and watch it get built live. Then tell me what to change.</div>
     </div>
     <div id="inputRow">
       <textarea id="promptBox" placeholder="e.g. A workout tracker with a weekly calendar and progress charts"></textarea>
@@ -784,24 +150,12 @@
 
   <div id="right">
     <div id="toolbar">
-      <div class="seg" role="tablist" aria-label="View">
-        <button id="previewTab" role="tab" aria-selected="true"><span data-icon="eye" data-size="sm"></span>Preview</button>
-        <button id="codeTab" role="tab" aria-selected="false"><span data-icon="code" data-size="sm"></span>Code</button>
-        <button id="histTab" role="tab" aria-selected="false"><span data-icon="history" data-size="sm"></span>History<span class="badge" id="histCount2"></span></button>
-      </div>
-      <!-- Demo data lives here rather than in the menu because it is
-           something you flip while looking at the result. -->
-      <label id="demoWrap" class="tgl" style="display:none" title="Show the seeded sample data, or start clean for real use">
-        <input type="checkbox" id="demoTgl" checked>
-        <span class="track"><span class="knob"></span></span>
-        <span class="lb">Demo data</span>
-      </label>
+      <button id="previewTab">👁 Preview</button>
+      <button id="codeTab">&lt;/&gt; Code</button>
       <span class="status" id="status"></span>
-      <button id="reloadBtn" class="icon" title="Reload the preview" aria-label="Reload the preview"><span data-icon="rotate-cw"></span></button>
-      <button id="popoutBtn" class="icon" title="Open the preview in a new tab" aria-label="Open the preview in a new tab"><span data-icon="external-link"></span></button>
     </div>
     <div id="empty">
-      <div class="big" data-icon="sparkles"></div>
+      <div class="big">🛠️</div>
       <div>Your project will appear here</div>
       <div class="ideas">
         <button onclick="useIdea('A pomodoro focus timer with task list')">Pomodoro timer</button>
@@ -809,33 +163,12 @@
         <button onclick="useIdea('A 2D breakout game with levels and scores')">Breakout game</button>
         <button onclick="useIdea('An expense tracker with monthly charts')">Expense tracker</button>
       </div>
-      <div id="recent" style="display:none">
-        <h3>Your projects</h3>
-        <div class="grid" id="recentGrid"></div>
-      </div>
-    </div>
-    <div id="booting">
-      <div class="pct" id="bootPct">0%</div>
-      <div class="track"><div class="bar" id="bootBar"></div></div>
-      <div class="phase" id="bootPhase">Starting…</div>
-      <div class="sub" id="bootSub"></div>
     </div>
     <iframe id="preview" sandbox="allow-scripts" style="display:none"></iframe>
     <div id="codeWrap">
       <div id="fileTabs"></div>
-      <div id="healthBar"></div>
       <pre id="codeView"></pre>
       <div id="runHint"></div>
-    </div>
-    <!-- Build history: every prompt, what it changed, and the diff.
-         One view rather than three, because they are three readings
-         of the same list. -->
-    <div id="histWrap">
-      <div id="histHead">
-        <span class="h">Build history</span>
-        <span class="sub" id="histCount"></span>
-      </div>
-      <div id="histList"></div>
     </div>
   </div>
 </main>
@@ -849,10 +182,6 @@ let targetsInfo = [];    // from /api/health
 let imageProviders = []; // from /api/health
 let healthInfo = {};     // full /api/health payload
 let lastKeyframes = [];  // [{id, b64, videoPrompt}] after keyframe generation
-// The URL the running preview is served from, token included. Only the
-// server knows the token, so this must come from the status response
-// rather than being assembled here.
-let liveUrl = "";
 
 // Movie style presets: injected into movie-plan prompts and shot lists.
 const MOVIE_STYLES = {
@@ -874,88 +203,6 @@ let activeFile = 0;
 
 const $ = (id) => document.getElementById(id);
 
-// ── Icons ───────────────────────────────────────────────────
-// Lucide (MIT), inlined as raw path data.
-//
-// WHY INLINE AND NOT A PACKAGE
-// The obvious move is `npm i lucide`. But this page has no bundler —
-// it is one static file served straight from /public — so a package
-// would mean either a build step or a CDN tag that blocks first
-// paint and dies when the CDN does. The path data is a few hundred
-// bytes and never changes. Inlining is strictly better here.
-//
-// Everything inherits currentColor, so an icon is always exactly the
-// colour of the text beside it. That is the thing emoji could never do.
-const ICONS = {
-  "zap": '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
-  "history": '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
-  "x": '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-  "chevron-down": '<path d="m6 9 6 6 6-6"/>',
-  "save": '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',
-  "download": '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
-  "rocket": '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91 0z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
-  "user": '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-  "eye": '<path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.87 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.87 0"/><circle cx="12" cy="12" r="3"/>',
-  "code": '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
-  "rotate-cw": '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
-  "external-link": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
-  "list-checks": '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
-  "plug": '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/>',
-  "shield": '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
-  "plus": '<path d="M5 12h14"/><path d="M12 5v14"/>',
-  "check": '<path d="M20 6 9 17l-5-5"/>',
-  "alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
-  "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
-  "moon": '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9"/>',
-  "monitor": '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
-  "pencil": '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
-  "image": '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
-  "play": '<path d="M5 5.27A2 2 0 0 1 8.04 3.6l11.13 6.73a2 2 0 0 1 0 3.42L8.04 20.48A2 2 0 0 1 5 18.78z"/>',
-  "globe": '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
-  "palette": '<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>',
-  "sparkles": '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',
-};
-
-/** SVG markup for one icon. size: "" | "sm" | "lg". */
-function icon(name, size) {
-  const body = ICONS[name];
-  if (!body) return "";
-  return '<svg class="i' + (size ? " " + size : "") + '" viewBox="0 0 24 24" aria-hidden="true">' + body + "</svg>";
-}
-
-/**
- * Fill every <span data-icon="..."> in a subtree with its SVG.
- *
- * Markup declares which icon it wants; this puts it there. That keeps
- * the HTML readable and means dynamically inserted markup only has to
- * carry the attribute, not several hundred bytes of path data.
- */
-function paintIcons(root) {
-  for (const el of (root || document).querySelectorAll("[data-icon]")) {
-    const svg = icon(el.getAttribute("data-icon"), el.getAttribute("data-size") || "");
-    if (svg) el.innerHTML = svg;
-  }
-}
-
-/**
- * Set a button's icon and label together.
- *
- * Needed because `btn.textContent = "Saved"` silently deletes the SVG
- * child — the icon vanishes on the first state change and never comes
- * back. Every transient button state goes through here.
- */
-function setBtn(el, name, label) {
-  el.innerHTML = icon(name) + "<span></span>";
-  el.lastChild.textContent = label;
-}
-
-/** An icon + text run, for inline messages. Escapes the text. */
-function iconLine(el, name, text) {
-  el.innerHTML = icon(name) + "<span></span>";
-  el.lastChild.textContent = " " + text;
-  return el.lastChild;
-}
-
 async function init() {
   const health = await fetch("/api/health").then(r => r.json());
   targetsInfo = health.targets;
@@ -976,11 +223,7 @@ async function init() {
   for (const p of health.providers) {
     const opt = document.createElement("option");
     opt.value = p.id;
-    // A <option> cannot contain markup, so this is one of the few
-    // places a glyph is the only option. These two are geometric
-    // shapes from the text font, not colour emoji — they inherit the
-    // menu's own colour and size.
-    opt.textContent = (p.configured ? "● " : "○ ") + p.label;
+    opt.textContent = (p.configured ? "🟢 " : "⚪ ") + p.label;
     opt.disabled = !p.configured;
     pSel.appendChild(opt);
   }
@@ -994,10 +237,8 @@ async function init() {
   try {
     const me = await fetch("/api/auth/me").then(r => r.json());
     if (me.accountsEnabled && me.user) {
-      iconLine($("userChip"), "user", me.user.displayName || me.user.email);
-      $("userChip").style.display = "inline-flex";
-      $("userChip").style.alignItems = "center";
-      $("userChip").style.gap = "5px";
+      $("userChip").textContent = "👤 " + (me.user.displayName || me.user.email);
+      $("userChip").style.display = "inline";
       $("logoutBtn").style.display = "inline-block";
       $("logoutBtn").onclick = async () => {
         await fetch("/api/auth/logout", { method: "POST" });
@@ -1008,12 +249,7 @@ async function init() {
 }
 
 async function refreshProjects() {
-  let projects = [];
-  try {
-    projects = await readJson(await fetch("/api/projects"));
-  } catch { return; }
-  if (!Array.isArray(projects)) return;
-
+  const projects = await fetch("/api/projects").then(r => r.json());
   const sel = $("projectSel");
   sel.innerHTML = '<option value="">Load project…</option>';
   for (const p of projects) {
@@ -1021,106 +257,6 @@ async function refreshProjects() {
     opt.value = p.id;
     opt.textContent = p.name;
     sel.appendChild(opt);
-  }
-
-  // Also show them on the empty screen. Coming back to a half-finished
-  // project should not require finding a dropdown first.
-  const grid = $("recentGrid");
-  grid.innerHTML = "";
-  for (const p of projects.slice(0, 12)) {
-    const card = document.createElement("button");
-    card.className = "card";
-    const when = p.savedAt ? new Date(p.savedAt).toLocaleString() : "";
-    card.innerHTML = '<div class="nm"></div><div class="dt"></div>';
-    card.querySelector(".nm").textContent = p.name;
-    card.querySelector(".dt").textContent = when;
-    card.onclick = () => openProject(p.id);
-    grid.appendChild(card);
-  }
-  $("recent").style.display = projects.length ? "" : "none";
-}
-
-async function openProject(id) {
-  const p = await readJson(await fetch("/api/projects/" + encodeURIComponent(id)));
-  currentProjectId = p.id;
-  applyLoaded(p);
-  setProjectName(p.name);
-  await refreshHistory();
-  addMsg("bot", "Opened “" + p.name + "”. Tell me what to change.");
-  if (canPreview(project)) runLivePreview({ auto: true });
-}
-
-/**
- * Persist after every build so nothing is ever lost to a closed tab.
- * First build creates the project; later ones update it and append a
- * version, so the history stays useful rather than filling with
- * near-identical copies.
- */
-// Saves are serialised. A build fires one save, the planner fires
-// another moments later, and a ticked checkbox can fire a third — all
-// racing to append a version number they each read separately. Only one
-// is ever in flight; anything requested meanwhile collapses into a
-// single trailing save.
-let saveInFlight = null;
-let savePending = false;
-
-function autoSave(opts) {
-  const silent = Boolean(opts && opts.silent);
-  if (saveInFlight) { savePending = true; return saveInFlight; }
-  saveInFlight = doSave(silent).finally(() => {
-    saveInFlight = null;
-    if (savePending) { savePending = false; autoSave({ silent: true }); }
-  });
-  return saveInFlight;
-}
-
-async function doSave(silent) {
-  const body = {
-    prompt: firstPrompt,
-    target: project.target,
-    code: project.code,
-    files: project.files,
-    binaries: project.binaries || [],
-    brain: brain || {},
-    // A version means "a build happened". Ticking a task or letting the
-    // planner update the plan is not a build, and versioning those would
-    // bury the real ones under near-identical copies.
-    silent,
-  };
-  try {
-    if (currentProjectId) {
-      const r = await fetch("/api/projects/" + encodeURIComponent(currentProjectId), {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!r.ok) throw new Error("update failed");
-    } else {
-      // A rename before the first save must survive it, so a name the
-      // user chose always wins over the one derived from the prompt.
-      const name = projectName || (firstPrompt || "Untitled").replace(/\s+/g, " ").trim().slice(0, 60);
-      const r = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...body, name }),
-      });
-      if (!r.ok) throw new Error("save failed");
-      currentProjectId = (await readJson(r)).id;
-      setProjectName(name);
-    }
-    await refreshProjects();
-    await refreshHistory();
-    setBtn($("saveBtn"), "check", "Saved");
-    setTimeout(() => { setBtn($("saveBtn"), "save", "Save"); }, 2000);
-    return true;
-  } catch (err) {
-    // Never interrupt the build over a failed save — the code is still
-    // on screen and downloadable. Say so quietly, log the detail, and
-    // resolve false rather than rejecting: most callers fire and forget,
-    // and a rejected promise there is just an unhandled rejection.
-    setBtn($("saveBtn"), "alert", "Not saved");
-    console.warn("autosave failed:", err);
-    return false;
   }
 }
 
@@ -1140,87 +276,26 @@ function isWeb(p) { return p && p.target === "web"; }
 // build and publish all treat it exactly like React.
 function isVite(p) { return p && (p.target === "react" || p.target === "mobile"); }
 
-const TABS = { preview: "previewTab", code: "codeTab", history: "histTab" };
-
 function showTab(which) {
-  if (!TABS[which]) which = "preview";
-  const onPreview = which === "preview";
-  $("preview").style.display = onPreview && !booting ? "" : "none";
-  $("booting").style.display = onPreview && booting ? "flex" : "none";
+  $("preview").style.display = which === "preview" ? "" : "none";
   $("codeWrap").style.display = which === "code" ? "flex" : "none";
-  $("histWrap").style.display = which === "history" ? "flex" : "none";
-  // The segmented control has to reflect where you actually are —
-  // without this the highlight sticks to whichever tab was clicked
-  // last, even when the view changed on its own after a build.
-  for (const [name, id] of Object.entries(TABS)) {
-    const on = name === which;
-    $(id).classList.toggle("on", on);
-    $(id).setAttribute("aria-selected", String(on));
-  }
-  $("reloadBtn").style.display = onPreview ? "" : "none";
-  $("popoutBtn").style.display = onPreview ? "" : "none";
-  $("demoWrap").style.display = onPreview && demoFlagFile() ? "" : "none";
-  if (which === "history") renderHistory();
-}
-
-// What the last build did to each file, so a 29-file project does not
-// require diffing by eye to find the two that changed.
-let lastChange = { added: [], modified: [], removed: [] };
-
-function changeOf(path) {
-  if (lastChange.added.includes(path)) return "added";
-  if (lastChange.modified.includes(path)) return "modified";
-  return "";
 }
 
 function renderFileTabs() {
   const tabs = $("fileTabs");
   tabs.innerHTML = "";
   if (!project || isWeb(project)) return;
-
-  // Changed files first: they are what you opened the tab to look at.
-  const order = project.files
-    .map((f, i) => ({ f, i, kind: changeOf(f.path) }))
-    .sort((a, b) => (a.kind ? 0 : 1) - (b.kind ? 0 : 1));
-
-  for (const { f, i, kind } of order) {
+  project.files.forEach((f, i) => {
     const b = document.createElement("button");
-    b.className = (i === activeFile ? "active " : "") + (kind ? "ch-" + kind : "");
-    if (kind) {
-      const dot = document.createElement("span");
-      dot.className = "dot";
-      dot.title = kind === "added" ? "Created by the last build" : "Changed by the last build";
-      b.appendChild(dot);
-    }
-    b.appendChild(document.createTextNode(f.path));
-    // Size, right there on the tab. A number nobody can see is a
-    // number that grows.
-    const h = healthOf(f.path);
-    if (h) {
-      const n = document.createElement("span");
-      n.className = "len " + h.level;
-      n.textContent = String(h.lines);
-      n.title = h.advice || h.lines + " lines";
-      b.appendChild(n);
-    }
+    b.textContent = f.path;
+    b.className = i === activeFile ? "active" : "";
     b.onclick = () => { activeFile = i; renderProject(); showTab("code"); };
     tabs.appendChild(b);
-  }
-
-  for (const p of lastChange.removed) {
-    const b = document.createElement("button");
-    b.className = "ch-removed";
-    b.textContent = p;
-    b.disabled = true;
-    b.title = "Deleted by the last build";
-    tabs.appendChild(b);
-  }
+  });
 }
 
 function renderProject() {
   $("empty").style.display = "none";
-  syncDemoToggle();
-  refreshHealth();
   $("saveBtn").disabled = false;
   $("downloadBtn").disabled = false;
   $("publishBtn").disabled = !(isWeb(project) || isVite(project));
@@ -1240,36 +315,34 @@ function renderProject() {
     $("codeView").textContent = file ? file.content : "";
     renderFileTabs();
     const info = targetInfo(project.target);
-    iconLine($("runHint"), "play", "How to run: " + info.runInstructions + " ");
-    if (canPreview(project)) {
-      // The preview starts on its own after each build. This is a
-      // manual restart for when you want a clean boot.
+    $("runHint").textContent = "▶ How to run: " + info.runInstructions + " ";
+    if (project.target === "python" || isVite(project)) {
       const b = document.createElement("button");
-      setBtn(b, "rotate-cw", "Restart preview");
-      b.onclick = () => runLivePreview({ auto: true });
+      b.textContent = "🌐 Run in browser";
+      b.onclick = runLivePreview;
       $("runHint").appendChild(b);
     }
     if (project.target === "video" && imageProviders.some(p => p.configured)) {
       const b = document.createElement("button");
-      setBtn(b, "image", "Generate keyframes");
+      b.textContent = "🖼 Generate keyframes";
       b.onclick = generateKeyframes;
       $("runHint").appendChild(b);
     }
     if (project.target === "book" && project.files.some(f => f.path === "pages.json")) {
       if (imageProviders.some(p => p.configured)) {
         const b = document.createElement("button");
-        setBtn(b, "image", "Illustrate book");
+        b.textContent = "🖼 Illustrate book";
         b.onclick = illustrateBook;
         $("runHint").appendChild(b);
       }
       if ((project.binaries || []).some(x => x.path.startsWith("pages/"))) {
         const v = document.createElement("button");
-        setBtn(v, "eye", "View book");
+        v.textContent = "📖 View book";
         v.onclick = showBook;
         $("runHint").appendChild(v);
         if (healthInfo.ffmpeg) {
           const a = document.createElement("button");
-          setBtn(a, "play", "Animate book");
+          a.textContent = "🎥 Animate book";
           a.onclick = animateBook;
           $("runHint").appendChild(a);
         }
@@ -1277,7 +350,7 @@ function renderProject() {
     }
     if (project.target === "godot" && imageProviders.some(p => p.configured) && project.files.some(f => f.path === "assets.json")) {
       const b = document.createElement("button");
-      setBtn(b, "palette", "Generate game art");
+      b.textContent = "🎨 Generate game art";
       b.onclick = generateGameArt;
       $("runHint").appendChild(b);
     }
@@ -1333,8 +406,7 @@ async function send() {
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = "", streamed = "", result = null, unhealthy = null, contractLosses = [];
-    const startedAt = Date.now();
+    let buffer = "", streamed = "", result = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -1347,35 +419,14 @@ async function send() {
         const event = JSON.parse(line.slice(5));
         if (event.type === "chunk") {
           streamed += event.text;
-          paintStream(streamed);
-          // Real progress, not a spinner. A true percentage is not
-          // knowable — nobody knows how many files the model will
-          // write until it writes them — but "4 files, 38s" is honest
-          // and answers the question people actually have.
-          showProgress(thinking, streamed, startedAt);
+          $("codeView").textContent = streamed;
+          $("codeView").scrollTop = $("codeView").scrollHeight;
         } else if (event.type === "fixing") {
           streamed = "";
           $("codeView").textContent = "";
           thinking.innerHTML = '<span class="spinner"></span>Found errors in the generated code — auto-fixing…';
-        } else if (event.type === "contracts") {
-          // Something outside the edited files depended on a name that
-          // is now gone. Not necessarily wrong — deleting a feature
-          // deletes its route — but never something to find out weeks
-          // later, which is what silence here would guarantee.
-          contractLosses = event.losses || [];
-        } else if (event.type === "unhealthy") {
-          // The build finished with the project still broken. This used
-          // to be silent — the reason RestoBar Manager was prompted
-          // into five more times while its entry module imported a file
-          // that had been deleted.
-          unhealthy = event;
         } else if (event.type === "done") {
           result = event;
-          lastChange = {
-            added: event.added || [],
-            modified: event.modified || [],
-            removed: event.removed || [],
-          };
         } else if (event.type === "error") {
           throw new Error(event.message);
         }
@@ -1389,77 +440,15 @@ async function send() {
       : { target: result.target, code: "", files: result.files };
     activeFile = 0;
     renderProject();
-    // "Updated!" over a project that does not compile is the single
-    // most expensive lie this thing can tell — it is what kept a
-    // broken RestoBar Manager being built on top of for five rounds.
-    if (unhealthy) {
-      iconLine(thinking, "alert", "Built, but the project still has problems.");
-      thinking.className = "msg err";
-    } else {
-      thinking.textContent = hadProject
-        ? "Updated! Anything else?"
-        : (isWeb(project)
-            ? "Done! Tell me what to change, or save/download it."
-            : "Done! " + project.files.length + " files generated.");
-    }
+    thinking.textContent = hadProject
+      ? "✅ Updated! Anything else?"
+      : (isWeb(project)
+          ? "✅ Done! Tell me what to change, or save/download it."
+          : "✅ Done! " + project.files.length + " files generated. Check the Code tab, download the ZIP, and see the run instructions at the bottom.");
     $("status").textContent = "";
-
-    if (contractLosses.length) {
-      const worst = contractLosses.find((l) => l.kind === "collection") || contractLosses[0];
-      const more = contractLosses.length - 1;
-      showToast({
-        kind: "contract",
-        title: "That change removed something other parts of the app relied on",
-        detail: worst.why + (more > 0 ? "\n\n(and " + more + " more)" : "") +
-          "\n\n" + contractLosses.map((l) => "  " + l.kind + ": " + l.name).join("\n"),
-        fix:
-          "The last change removed things the rest of the app depends on:\n\n" +
-          contractLosses.map((l) => "- " + l.kind + ' "' + l.name + '" — ' + l.why).join("\n") +
-          "\n\nPut them back exactly as they were spelled. Moving them between " +
-          "files is fine; renaming or dropping them is not. Storage collection " +
-          "names in particular are database keys — a renamed one orphans every " +
-          "existing record.",
-      });
-    }
-
-    if (unhealthy) {
-      const lost = unhealthy.lost || [];
-      showToast({
-        kind: "build",
-        title: lost.length
-          ? "The correction dropped " + lost.length + " file" + (lost.length === 1 ? "" : "s") + " — kept the previous version instead"
-          : "The build finished, but the project will not run",
-        detail: (lost.length ? "Missing: " + lost.join(", ") + "\n\n" : "") +
-          String(unhealthy.errors || "").slice(0, 700),
-        fix:
-          "The project does not pass its checks. Fix exactly this, and output the " +
-          "COMPLETE project — every file, including ones you did not change. " +
-          "Anything you leave out gets deleted.\n\n" +
-          (lost.length ? "These files are missing and must exist: " + lost.join(", ") + "\n\n" : "") +
-          String(unhealthy.errors || ""),
-      });
-    }
-
-    // Persist before anything else — a closed tab should never cost a
-    // build. Then boot the preview without being asked, because
-    // pressing a button to see what you just built is a step that
-    // should not exist.
-    autoSave();
-    clearToasts("preview");   // a fresh build supersedes the last failure
-    if (!unhealthy) clearToasts("build");
-    versionCache = {};
-    if (canPreview(project)) runLivePreview({ auto: true });
-
-    // The plan: drafted on the first build, updated after every one.
-    // Both are best-effort — a planner hiccup must never look like a
-    // failed build.
-    // advanceBrain plans first if there is no plan, so this is one
-    // call either way. Two branches here is how the loaded-project
-    // case got missed in the first place.
-    advanceBrain(promptText);
   } catch (err) {
     thinking.remove();
-    addMsg("err", "" + err.message);
+    addMsg("err", "⚠️ " + err.message);
     $("status").textContent = "";
     if (project) renderProject(); // restore last good state
   }
@@ -1470,298 +459,28 @@ async function send() {
 function useIdea(text) { $("promptBox").value = text; send(); }
 
 // ---- live Python preview (web-based, no ZIP needed) ----
-// A proxy (Render, Cloudflare) returns an HTML error page, not JSON, when
-// something goes wrong upstream. Calling .json() on that throws
-// "Unexpected token '<'", which tells you nothing. Read it as text first
-// and report what actually happened.
-/**
- * Turn a server error into something a person can act on.
- *
- * Postgres and Supabase errors arrive as raw JSON blobs — a wall of
- * {"code":"23505","details":"Key (project_id, version)=..."} that tells
- * the user nothing and looks broken. Translate the ones we know.
- */
-function humanError(raw) {
-  const s = String(raw || "");
-  if (s.includes("23505") && s.includes("version")) {
-    return "Two saves collided. Nothing was lost — try again.";
-  }
-  if (s.includes("23505")) return "That already exists.";
-  if (/HTTP 40[13]/.test(s)) return "Your session expired. Reload the page to sign in again.";
-  if (/HTTP 5\d\d/.test(s)) return "The server had a problem. Try again in a moment.";
-  if (s.length > 220) return s.slice(0, 200) + "…";
-  return s;
-}
-
-async function readJson(res) {
-  const body = await res.text();
-  try {
-    return JSON.parse(body);
-  } catch {
-    if (body.trim().startsWith("<")) {
-      throw new Error(
-        "The server returned a web page instead of data (HTTP " + res.status + "). " +
-        "That usually means the request timed out at the proxy, or the server restarted."
-      );
-    }
-    throw new Error("Unreadable response from the server (HTTP " + res.status + ").");
-  }
-}
-
-// ── Brain: the phase plan ──────────────────────────────────
-// The plan travels with the project, so reopening one picks up exactly
-// where it was — including which phase is active and what is left in it.
-let brain = null;
-let brainOpen = true;
-
-function renderBrain() {
-  const el = $("brain");
-  if (!brain || !brain.phases || !brain.phases.length) { el.style.display = "none"; return; }
-  el.style.display = "";
-  $("brainChev").classList.toggle("up", !brainOpen);
-  $("brainBody").style.display = brainOpen ? "" : "none";
-
-  const body = $("brainBody");
-  body.innerHTML = "";
-  for (const p of brain.phases) {
-    const wrap = document.createElement("div");
-    wrap.className = "phase" + (p.id === brain.currentPhase ? " active" : "") + (p.status === "done" ? " done" : "");
-
-    const head = document.createElement("div");
-    head.className = "ph";
-    const nm = document.createElement("span");
-    nm.className = "nm";
-    const doneCount = (p.tasks || []).filter(t => t.done).length;
-    nm.textContent = p.name + (p.tasks && p.tasks.length ? "  " + doneCount + "/" + p.tasks.length : "");
-    head.appendChild(nm);
-    if (p.id === brain.currentPhase && p.status !== "done") {
-      const pill = document.createElement("span");
-      pill.className = "pill";
-      pill.textContent = "now";
-      head.appendChild(pill);
-    }
-    wrap.appendChild(head);
-
-    if (p.goal) {
-      const g = document.createElement("div");
-      g.className = "goal";
-      g.textContent = p.goal;
-      wrap.appendChild(g);
-    }
-
-    const ul = document.createElement("ul");
-    for (const t of p.tasks || []) {
-      const li = document.createElement("li");
-      li.className = t.done ? "done" : "";
-      const bx = document.createElement("input");
-      bx.type = "checkbox";
-      bx.className = "bx";
-      bx.checked = !!t.done;
-      // Ticking by hand matters: the model is strict about what counts
-      // as done, and sometimes you just know.
-      bx.onchange = () => { t.done = bx.checked; renderBrain(); autoSave({ silent: true }); };
-      const sp = document.createElement("span");
-      sp.textContent = t.text;
-      li.appendChild(bx); li.appendChild(sp);
-      ul.appendChild(li);
-    }
-    wrap.appendChild(ul);
-    body.appendChild(wrap);
-  }
-}
-
-function showSuggestions(list) {
-  const el = $("suggest");
-  const box = $("suggestList");
-  box.innerHTML = "";
-  if (!list || !list.length) { el.style.display = "none"; return; }
-  for (const s of list) {
-    const b = document.createElement("button");
-    b.className = "chip";
-    b.textContent = s;
-    // One click continues the build. Not having to compose the next
-    // prompt yourself is the whole point.
-    b.onclick = () => { $("promptBox").value = s; el.style.display = "none"; send(); };
-    box.appendChild(b);
-  }
-  el.style.display = "";
-}
-
-/** Draft a plan the first time a project is built. */
-async function planBrain(idea) {
-  try {
-    const r = await fetch("/api/brain/plan", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ provider: $("providerSel").value, idea }),
-    });
-    if (!r.ok) return;
-    brain = await readJson(r);
-    renderBrain();
-  } catch { /* a missing plan must never block a build */ }
-}
-
-/** Does this project have a usable phase plan? */
-function hasPlan() {
-  return Boolean(brain && brain.phases && brain.phases.length);
-}
-
-/** After a build: mark progress and offer the next steps. */
-async function advanceBrain(justBuilt) {
-  // Reported as "Pre-Suggested Prompts are not showing up".
-  //
-  // This used to `return` when there was no plan. Opening a project
-  // saved before the brain existed — or any project whose first plan
-  // failed — meant every later build hit that return, so suggestions
-  // never appeared again and there was no way to recover short of
-  // starting a new project. Plan on demand instead.
-  if (!hasPlan()) await planBrain(firstPrompt || justBuilt);
-  if (!hasPlan()) return;
-  try {
-    const r = await fetch("/api/brain/advance", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        provider: $("providerSel").value,
-        brain,
-        justBuilt,
-        files: (project.files || []).map(f => ({ path: f.path })),
-      }),
-    });
-    if (!r.ok) return;
-    const out = await readJson(r);
-    if (out.brain) brain = out.brain;
-    renderBrain();
-    showSuggestions(out.suggestions);
-    autoSave({ silent: true });
-  } catch { /* planning is best-effort */ }
-}
-
-$("brainHead").onclick = (e) => {
-  if (e.target.id === "addPhaseBtn") return;
-  brainOpen = !brainOpen;
-  renderBrain();
-};
-
-$("addPhaseBtn").onclick = () => {
-  const name = prompt("Phase name:");
-  if (!name) return;
-  const goal = prompt("What does this phase deliver?") || "";
-  const raw = prompt("Tasks, one per line:") || "";
-  if (!brain) brain = { goal: firstPrompt || "", phases: [], currentPhase: "" };
-  const id = "p" + (brain.phases.length + 1) + "-" + Date.now().toString(36);
-  brain.phases.push({
-    id, name, goal,
-    tasks: raw.split("\n").map(t => t.trim()).filter(Boolean).map(t => ({ text: t, done: false })),
-    status: brain.phases.length ? "planned" : "active",
-  });
-  if (!brain.currentPhase) brain.currentPhase = id;
-  renderBrain();
-  autoSave({ silent: true });
-};
-
-/** Targets whose output can actually run in the preview pane. */
-function canPreview(p) {
-  return p && (isVite(p) || p.target === "python");
-}
-
-let booting = false;
-
-// There is no true progress signal — npm does not report a percentage,
-// and pretending otherwise would mean a bar that jumps to 90% and sits
-// there. So the bar eases toward a ceiling per phase and only reaches
-// 100% when the preview is genuinely up. It always moves, and it never
-// lies about being nearly done.
-function bootProgress(state, phaseElapsedMs) {
-  const ease = (base, span, tau) => base + span * (1 - Math.exp(-phaseElapsedMs / tau));
-  if (state === "installing") return ease(2, 68, 35000);   // → 70%
-  if (state === "starting") return ease(70, 25, 12000);    // → 95%
-  if (state === "ready") return 100;
-  return 2;
-}
-
-function showBoot(state, elapsedMs, phase, sub) {
-  booting = true;
-  const pct = Math.min(100, Math.round(bootProgress(state, elapsedMs)));
-  $("bootPct").textContent = pct + "%";
-  $("bootBar").style.width = pct + "%";
-  $("bootPhase").textContent = phase;
-  $("bootSub").textContent = sub || "";
-  showTab("preview");
-}
-
-async function runLivePreview(opts) {
-  const auto = opts && opts.auto;
-  const note = auto ? null : addMsg("bot", "");
-  let phaseState = null;
-  let phaseStart = Date.now();
-
+async function runLivePreview() {
+  const note = addMsg("bot", "");
+  note.innerHTML = '<span class="spinner"></span>' + (isVite(project)
+    ? "Starting your app — first run installs packages (~1 minute)…"
+    : "Starting your app on this machine…");
   try {
     const res = await fetch("/api/preview", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      // The project id scopes the app's stored data. Without it the
-      // preview has nowhere to save, and db.save() answers 409.
-      body: JSON.stringify({ files: project.files, kind: project.target, projectId: currentProjectId }),
+      body: JSON.stringify({ files: project.files, kind: project.target }),
     });
-    const started = await readJson(res);
-    if (!res.ok && res.status !== 202) throw new Error(started.error || "Preview failed");
-    // React projects are served from memory and come back ready in one
-    // round trip. Flashing a progress bar for 200ms looks broken, so
-    // only show it when there is actually something to wait for.
-    if (started.state !== "ready") showBoot("installing", 0, "Preparing your app…", "");
-
-    // The server works in the background; poll rather than holding a
-    // request open. See src/routes/preview.ts for why that matters.
-    const deadline = Date.now() + 5 * 60 * 1000;
-    let data = started;
-    while (data.state !== "ready" && data.state !== "error") {
-      if (Date.now() > deadline) throw new Error("Gave up waiting after 5 minutes.");
-      if (data.state !== phaseState) { phaseState = data.state; phaseStart = Date.now(); }
-      const secs = Math.round((data.elapsedMs || 0) / 1000);
-      showBoot(
-        data.state,
-        Date.now() - phaseStart,
-        data.state === "installing" ? "Installing packages" : "Starting the dev server",
-        (data.message || "") + (secs > 3 ? "  ·  " + secs + "s elapsed" : "")
-      );
-      await new Promise((r) => setTimeout(r, 1200));
-      data = await readJson(await fetch("/api/preview"));
-    }
-    if (data.state === "error") throw new Error(data.message || "Preview failed to start");
-
-    showBoot("ready", 0, "Ready", "");
-    await new Promise((r) => setTimeout(r, 250)); // let 100% register
-
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Preview failed");
     const iframe = $("preview");
-    // allow-same-origin is deliberately NOT here. /live is served from
-    // this origin, so granting it alongside allow-scripts lets
-    // generated code reach parent.document, read the session cookie
-    // and call our API as the signed-in user — Chrome warns about
-    // exactly this pairing. It was added to make localStorage work;
-    // the storage shim in the preview does that without the hole.
-    iframe.setAttribute("sandbox", "allow-scripts allow-forms");
+    iframe.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin");
     iframe.removeAttribute("srcdoc");
-    // Remember it: /live now carries a per-run token, so "/live/" on
-    // its own is a 404 and the pop-out button cannot construct the URL.
-    liveUrl = data.url;
-    iframe.src = data.url + "?t=" + Date.now();
-    booting = false;
+    iframe.src = data.url;
     showTab("preview");
-    if (note) iconLine(note, "globe", "Running live in the preview.");
+    note.textContent = "🌐 Running live in the preview! (It runs locally on this machine — it stops when you build something new.)";
   } catch (err) {
-    booting = false;
-    showTab("code");
-    if (note) note.remove();
-    const m = addMsg("err", "Preview failed: " + humanError(err.message));
-    // Offer a retry inline — a transient npm or network failure should
-    // not mean regenerating the whole project.
-    const retry = document.createElement("button");
-    setBtn(retry, "rotate-cw", "Try again");
-    retry.style.marginTop = "8px";
-    retry.onclick = () => { m.remove(); runLivePreview({ auto: true }); };
-    m.appendChild(document.createElement("br"));
-    m.appendChild(retry);
+    note.textContent = "⚠️ " + err.message;
+    note.className = "msg err";
   }
 }
 
@@ -1791,12 +510,12 @@ async function illustrateBook() {
       project.binaries.push({ path: "pages/page-" + (pages[i].page ?? i + 1) + ".png", b64: data.b64 });
       ok++;
     } catch (err) {
-      addMsg("err", "Page " + (pages[i].page ?? i + 1) + ": " + err.message);
+      addMsg("err", "⚠️ Page " + (pages[i].page ?? i + 1) + ": " + err.message);
     }
   }
-  iconLine(note, "image", "Illustrated " + ok + "/" + pages.length + " pages. ");
+  note.textContent = "🖼 Illustrated " + ok + "/" + pages.length + " pages. ";
   const v = document.createElement("button");
-  setBtn(v, "eye", "View book");
+  v.textContent = "📖 View book";
   v.onclick = showBook;
   note.appendChild(v);
   showBook();
@@ -1851,7 +570,7 @@ function animateBook() {
     .filter(f => f.b64);
   if (frames.length === 0) { addMsg("err", "Illustrate the book first."); return; }
   inhouseMovie(frames);
-  addMsg("bot", "Tip: when the video is ready, use 🎤 Add narration — it can read the whole book aloud — then 🎵 Add music.");
+  addMsg("bot", "💡 Tip: when the video is ready, use 🎤 Add narration — it can read the whole book aloud — then 🎵 Add music.");
 }
 
 // ---- game art generation for Godot projects ----
@@ -1881,16 +600,16 @@ async function generateGameArt() {
       project.binaries.push({ path, b64: data.b64 });
       ok++;
     } catch (err) {
-      addMsg("err", "" + (assets[i].file || "sprite " + (i + 1)) + ": " + err.message);
+      addMsg("err", "⚠️ " + (assets[i].file || "sprite " + (i + 1)) + ": " + err.message);
     }
   }
 
-  note.textContent = "Game art done: " + ok + "/" + assets.length + " sprites drawn. They're INCLUDED in the ZIP download — unzip and the game uses them automatically. (Art isn't saved with 💾 projects yet — regenerate after loading.)";
+  note.textContent = "🎨 Game art done: " + ok + "/" + assets.length + " sprites drawn. They're INCLUDED in the ZIP download — unzip and the game uses them automatically. (Art isn't saved with 💾 projects yet — regenerate after loading.)";
   const cells = project.binaries.map(b => '<figure><img src="data:image/png;base64,' + b.b64 + '"><figcaption>' + b.path + '</figcaption></figure>').join("");
   const iframe = $("preview");
   iframe.removeAttribute("src");
   iframe.setAttribute("sandbox", "allow-scripts");
-  iframe.srcdoc = "<!DOCTYPE html><html><head><style>body{font-family:sans-serif;background:#111;color:#eee;margin:16px}div.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}figure{margin:0;background:#1c1c22;border-radius:10px;padding:10px}img{width:100%;border-radius:6px;image-rendering:pixelated}figcaption{margin-top:6px;font-size:12px;color:#aaa}</style></head><body><h2>Game art</h2><div class='grid'>" + cells + "</div></body></html>";
+  iframe.srcdoc = "<!DOCTYPE html><html><head><style>body{font-family:sans-serif;background:#111;color:#eee;margin:16px}div.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}figure{margin:0;background:#1c1c22;border-radius:10px;padding:10px}img{width:100%;border-radius:6px;image-rendering:pixelated}figcaption{margin-top:6px;font-size:12px;color:#aaa}</style></head><body><h2>🎨 Game art</h2><div class='grid'>" + cells + "</div></body></html>";
   $("empty").style.display = "none";
   showTab("preview");
 }
@@ -1925,16 +644,16 @@ async function generateKeyframes() {
   lastKeyframes = images.filter(im => im.b64);
 
   const ok = images.filter(im => im.b64).length;
-  note.textContent = "Keyframes done: " + ok + "/" + scenes.length + " generated (Preview tab; right-click to save). ";
+  note.textContent = "🖼 Keyframes done: " + ok + "/" + scenes.length + " generated (Preview tab; right-click to save). ";
   const veoReady = (healthInfo.videoProviders || []).some(p => p.configured);
   if (ok > 0 && healthInfo.ffmpeg) {
     const b2 = document.createElement("button");
-    setBtn(b2, "play", "Make movie in-house (free)");
+    b2.textContent = "🎥 Make movie in-house (free)";
     b2.onclick = () => inhouseMovie(lastKeyframes, note);
     note.appendChild(b2);
     if (veoReady) {
       const b = document.createElement("button");
-      setBtn(b, "play", "Animate with Veo AI (paid)");
+      b.textContent = "🎞 Animate with Veo AI (paid)";
       b.onclick = () => animateAndAssemble(note);
       note.appendChild(b);
     }
@@ -1946,7 +665,7 @@ async function generateKeyframes() {
     ? '<figure><img src="data:image/png;base64,' + im.b64 + '"><figcaption>Scene ' + im.id + '</figcaption></figure>'
     : '<figure class="err"><div>Scene ' + im.id + ' failed:<br>' + String(im.error).slice(0, 200) + '</div></figure>'
   ).join("");
-  const gallery = "<!DOCTYPE html><html><head><style>body{font-family:sans-serif;background:#111;color:#eee;margin:16px}h2{font-weight:600}div.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}figure{margin:0;background:#1c1c22;border-radius:10px;padding:10px}img{width:100%;border-radius:6px}figcaption{margin-top:6px;font-size:13px;color:#aaa}figure.err div{color:#ff9db0;font-size:12px}</style></head><body><h2>Scene keyframes</h2><div class='grid'>" + cells + "</div></body></html>";
+  const gallery = "<!DOCTYPE html><html><head><style>body{font-family:sans-serif;background:#111;color:#eee;margin:16px}h2{font-weight:600}div.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}figure{margin:0;background:#1c1c22;border-radius:10px;padding:10px}img{width:100%;border-radius:6px}figcaption{margin-top:6px;font-size:13px;color:#aaa}figure.err div{color:#ff9db0;font-size:12px}</style></head><body><h2>🎬 Scene keyframes</h2><div class='grid'>" + cells + "</div></body></html>";
 
   const iframe = $("preview");
   iframe.removeAttribute("src");
@@ -1961,7 +680,7 @@ function playMovie(file, note, label) {
   const googleReady = (healthInfo.providers || []).some(p => p.id === "google" && p.configured);
   if (googleReady && healthInfo.ffmpeg) {
     const b = document.createElement("button");
-    setBtn(b, "play", "Add narration");
+    b.textContent = "🎤 Add narration";
     b.onclick = async () => {
       let defaultText = "";
       if (project && project.target === "video") {
@@ -1986,14 +705,14 @@ function playMovie(file, note, label) {
         if (!res.ok) throw new Error(data.error || "narration failed");
         playMovie(data.file, n2, "🎤 Narrated movie ready!");
       } catch (err) {
-        n2.textContent = "" + err.message; n2.className = "msg err";
+        n2.textContent = "⚠️ " + err.message; n2.className = "msg err";
       }
     };
     note.appendChild(b);
   }
   if (healthInfo.ffmpeg) {
     const m = document.createElement("button");
-    setBtn(m, "play", "Add music");
+    m.textContent = "🎵 Add music";
     m.onclick = () => {
       const inp = document.createElement("input");
       inp.type = "file";
@@ -2018,7 +737,7 @@ function playMovie(file, note, label) {
           if (!res.ok) throw new Error(data.error || "music mix failed");
           playMovie(data.file, n3, "🎵 Scored movie ready!");
         } catch (err) {
-          n3.textContent = "" + err.message; n3.className = "msg err";
+          n3.textContent = "⚠️ " + err.message; n3.className = "msg err";
         }
       };
       inp.click();
@@ -2047,7 +766,7 @@ async function inhouseMovie(frames, prevNote) {
     if (!res.ok) throw new Error(data.error || "in-house render failed");
     playMovie(data.file, note, "🎥 Your movie is ready (made 100% by our own software)!");
   } catch (err) {
-    note.textContent = "" + err.message;
+    note.textContent = "⚠️ " + err.message;
     note.className = "msg err";
   }
 }
@@ -2070,10 +789,10 @@ async function animateAndAssemble(prevNote) {
       if (!res.ok) throw new Error(data.error || "animate failed");
       clips.push(data.file);
     } catch (err) {
-      addMsg("err", "Scene " + kf.id + ": " + err.message);
+      addMsg("err", "⚠️ Scene " + kf.id + ": " + err.message);
     }
   }
-  if (clips.length === 0) { note.textContent = "No scenes were animated."; note.className = "msg err"; return; }
+  if (clips.length === 0) { note.textContent = "⚠️ No scenes were animated."; note.className = "msg err"; return; }
 
   note.innerHTML = '<span class="spinner"></span>Stitching ' + clips.length + " clips with FFmpeg…";
   try {
@@ -2084,14 +803,14 @@ async function animateAndAssemble(prevNote) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "assembly failed");
-    note.textContent = "Your movie is ready! Playing in the Preview tab. File saved in the platform's media folder: " + data.file;
+    note.textContent = "🎬 Your movie is ready! Playing in the Preview tab. File saved in the platform's media folder: " + data.file;
     const iframe = $("preview");
     iframe.removeAttribute("src");
     iframe.setAttribute("sandbox", "allow-scripts");
     iframe.srcdoc = "<!DOCTYPE html><body style='margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh'><video src='" + data.file + "' controls autoplay style='max-width:100%;max-height:100%'></video></body>";
     showTab("preview");
   } catch (err) {
-    note.textContent = "" + err.message;
+    note.textContent = "⚠️ " + err.message;
     note.className = "msg err";
   }
 }
@@ -2141,10 +860,10 @@ $("photoInput").onchange = async (e) => {
     if (!res.ok) throw new Error(data.error || "shot list failed");
     shots = data.shots;
   } catch (err) {
-    note.textContent = "" + err.message; note.className = "msg err"; return;
+    note.textContent = "⚠️ " + err.message; note.className = "msg err"; return;
   }
 
-  note.textContent = "Shot list ready:\n" + shots.map((s, i) => (i + 1) + ". " + s.title).join("\n");
+  note.textContent = "🎬 Shot list ready:\n" + shots.map((s, i) => (i + 1) + ". " + s.title).join("\n");
   if (!confirm("Animate " + photos.length + " photo(s) with Veo? Costs roughly $1-3 per photo and takes a few minutes.")) return;
 
   const work = addMsg("bot", "");
@@ -2161,10 +880,10 @@ $("photoInput").onchange = async (e) => {
       if (!res.ok) throw new Error(data.error || "animate failed");
       clips.push(data.file);
     } catch (err) {
-      addMsg("err", "Photo " + (i + 1) + ": " + err.message);
+      addMsg("err", "⚠️ Photo " + (i + 1) + ": " + err.message);
     }
   }
-  if (clips.length === 0) { work.textContent = "No photos could be animated."; work.className = "msg err"; return; }
+  if (clips.length === 0) { work.textContent = "⚠️ No photos could be animated."; work.className = "msg err"; return; }
 
   work.innerHTML = '<span class="spinner"></span>Stitching your movie…';
   try {
@@ -2175,7 +894,7 @@ $("photoInput").onchange = async (e) => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "assembly failed");
-    work.textContent = "Your photo movie is ready — playing in the Preview tab! Saved at " + data.file;
+    work.textContent = "🎬 Your photo movie is ready — playing in the Preview tab! Saved at " + data.file;
     const iframe = $("preview");
     iframe.removeAttribute("src");
     iframe.setAttribute("sandbox", "allow-scripts");
@@ -2183,7 +902,7 @@ $("photoInput").onchange = async (e) => {
     $("empty").style.display = "none";
     showTab("preview");
   } catch (err) {
-    work.textContent = "" + err.message; work.className = "msg err";
+    work.textContent = "⚠️ " + err.message; work.className = "msg err";
   }
 };
 
@@ -2199,430 +918,8 @@ $("sendBtn").onclick = send;
 $("promptBox").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
 });
-// isWeb() is true ONLY for the single-file web target, so this used to
-// trap every React, mobile and Python project in the Code view with no
-// way back. Any project that has a preview can switch to it.
-$("previewTab").onclick = () => { if (project) showTab("preview"); };
+$("previewTab").onclick = () => { if (project && isWeb(project)) showTab("preview"); };
 $("codeTab").onclick = () => { if (project) showTab("code"); };
-$("histTab").onclick = () => { if (project) showTab("history"); };
-
-// ── Alerts ──────────────────────────────────────────────────
-// Errors used to be trapped inside the preview iframe: the frame
-// printed a red banner the parent could not read, so the only way to
-// act on one was to retype it into the prompt box by hand.
-
-function clearToasts(kind) {
-  for (const t of $("alerts").querySelectorAll(kind ? '.toast[data-kind="' + kind + '"]' : ".toast")) {
-    t.remove();
-  }
-}
-
-/**
- * @param opts.title   short human line
- * @param opts.detail  the raw message — monospace, scrollable
- * @param opts.fix     prompt to send when Fix is clicked; omit for no button
- * @param opts.kind    dedupe key; a second toast of the same kind replaces the first
- */
-function showToast(opts) {
-  const kind = opts.kind || "error";
-  clearToasts(kind);
-  const el = document.createElement("div");
-  el.className = "toast" + (opts.info ? " info" : "");
-  el.setAttribute("data-kind", kind);
-  el.innerHTML =
-    icon(opts.info ? "check" : "alert") +
-    '<div class="body"><div class="t"></div><div class="d"></div><div class="acts"></div></div>' +
-    '<button class="x" title="Dismiss" aria-label="Dismiss">' + icon("x", "sm") + "</button>";
-  el.querySelector(".t").textContent = opts.title;
-  const d = el.querySelector(".d");
-  if (opts.detail) d.textContent = opts.detail; else d.remove();
-
-  const acts = el.querySelector(".acts");
-  if (opts.fix) {
-    const fix = document.createElement("button");
-    fix.className = "fix";
-    fix.textContent = "Fix this";
-    fix.onclick = () => {
-      if (busy) return;
-      el.remove();
-      $("promptBox").value = opts.fix;
-      send();
-    };
-    acts.appendChild(fix);
-
-    // Take me to it. A file name in an error message is useless if
-    // finding it means scanning twenty-nine tabs.
-    const where = fileNamed(opts.detail || opts.title);
-    if (where >= 0) {
-      const go = document.createElement("button");
-      setBtn(go, "code", "Show me");
-      go.onclick = () => { activeFile = where; renderProject(); showTab("code"); };
-      acts.appendChild(go);
-    }
-
-    const copy = document.createElement("button");
-    copy.textContent = "Copy error";
-    copy.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(opts.detail || opts.title);
-        copy.textContent = "Copied";
-        setTimeout(() => { copy.textContent = "Copy error"; }, 1400);
-      } catch { /* clipboard blocked — the text is selectable above */ }
-    };
-    acts.appendChild(copy);
-  } else {
-    acts.remove();
-  }
-  el.querySelector(".x").onclick = () => el.remove();
-  $("alerts").appendChild(el);
-  return el;
-}
-
-/**
- * The index of the first project file an error text names.
- *
- * Errors quote paths in several shapes — "src/main.jsx", "./App.jsx",
- * "/live/tok/src/App.jsx" — so match on the tail of the path rather
- * than trying to normalise every form.
- */
-function fileNamed(text) {
-  if (!project || !project.files || !text) return -1;
-  let best = -1, bestLen = 0;
-  project.files.forEach((f, i) => {
-    if (text.includes(f.path) && f.path.length > bestLen) { best = i; bestLen = f.path.length; }
-  });
-  return best;
-}
-
-/**
- * The preview posts its runtime errors out to us. Without this the
- * message dies inside the iframe and the build merely looks blank.
- */
-window.addEventListener("message", (e) => {
-  const d = e.data;
-  if (!d || typeof d !== "object") return;
-  if (d.__preview === "ok") { clearToasts("preview"); return; }
-  if (d.__preview !== "error") return;
-
-  const raw = String(d.message || "").slice(0, 600);
-  const where = d.source ? String(d.source).replace(/^.*\/live\//, "") : "";
-  const known = classifyFailure(raw);
-
-  showToast({
-    kind: "preview",
-    // A named cause beats an echoed stack trace. "A file imports
-    // something its source never exports" tells you what to look for;
-    // "does not provide an export named 'IconUtensils'" tells you what
-    // the engine said.
-    title: known ? known.title : "The preview hit an error",
-    detail:
-      (known ? known.cause + "\n\n" : "") + raw +
-      (where ? "\n  at " + where + (d.line ? ":" + d.line : "") : ""),
-    // The verbatim message still goes to the agent — it names the file
-    // and the symbol, which no paraphrase of ours preserves.
-    fix:
-      "The preview is failing with this error:\n\n" + raw +
-      (where ? "\n(in " + where + (d.line ? " line " + d.line : "") + ")" : "") +
-      (known
-        ? "\n\nThis is a known failure mode: " + known.title + ".\n" +
-          known.cause + "\n\nWhat to do: " + known.fix
-        : "\n\nFind the cause and fix it.") +
-      "\n\nChange only what is needed for this error.",
-  });
-});
-
-// ── Failure catalogue ───────────────────────────────────────
-// Fetched once from the server so the list lives in exactly one place
-// (src/failures.ts) rather than being duplicated here and drifting.
-let failureCatalogue = [];
-
-fetch("/api/failures")
-  .then((r) => r.json())
-  .then((list) => {
-    failureCatalogue = (Array.isArray(list) ? list : []).map((f) => ({
-      ...f,
-      re: f.signature ? new RegExp(f.signature.source, f.signature.flags) : null,
-    }));
-  })
-  .catch(() => { /* an unnamed error still shows its raw text */ });
-
-/** First match wins — entries are ordered most specific first. */
-function classifyFailure(message) {
-  if (!message) return null;
-  for (const f of failureCatalogue) {
-    if (f.re && f.re.test(message)) return f;
-  }
-  return null;
-}
-
-// ── Build history ───────────────────────────────────────────
-// Three things Jordi asked for turn out to be three readings of one
-// list: what did I ask for, what changed, and show me the code. So
-// they are one view with expandable rows, not three tabs that would
-// each need their own empty state.
-
-let versionCache = {};   // version number -> full project snapshot
-
-async function renderHistory() {
-  const list = $("histList");
-  if (!currentProjectId) {
-    list.innerHTML = '<div class="empty">Nothing saved yet. Your first build starts the history.</div>';
-    $("histCount").textContent = "";
-    return;
-  }
-  let versions = [];
-  try {
-    versions = await fetch("/api/projects/" + currentProjectId + "/versions").then(r => r.json());
-  } catch { /* fall through to the empty state */ }
-  if (!Array.isArray(versions) || !versions.length) {
-    list.innerHTML = '<div class="empty">No builds recorded for this project yet.</div>';
-    $("histCount").textContent = "";
-    return;
-  }
-
-  $("histCount").textContent =
-    versions.length + (versions.length === 1 ? " build" : " builds") +
-    " · newest first";
-  list.innerHTML = "";
-  for (const v of versions) list.appendChild(versionRow(v, v.version === versions[0].version));
-}
-
-function versionRow(v, isHead) {
-  const row = document.createElement("div");
-  row.className = "ver" + (isHead ? " head" : "");
-  row.innerHTML =
-    '<span class="dot"></span>' +
-    '<div class="card">' +
-      '<div class="top"><span class="v"></span><span class="now" style="display:none">Current</span>' +
-      '<span class="when"></span></div>' +
-      '<div class="prompt"></div><div class="files"></div>' +
-      '<div class="acts"></div><div class="diff"></div>' +
-    "</div>";
-  row.querySelector(".v").textContent = "v" + v.version;
-  row.querySelector(".when").textContent = new Date(v.createdAt).toLocaleString();
-  // The label IS the prompt — that is what makes this list readable
-  // as a record of what you asked for.
-  row.querySelector(".prompt").textContent = v.label || "Saved";
-  if (isHead) row.querySelector(".now").style.display = "";
-
-  const acts = row.querySelector(".acts");
-  const diff = row.querySelector(".diff");
-
-  const view = document.createElement("button");
-  setBtn(view, "code", "View changes");
-  view.onclick = async () => {
-    if (diff.classList.contains("open")) { diff.classList.remove("open"); return; }
-    setBtn(view, "code", "Loading…");
-    view.disabled = true;
-    try {
-      await fillDiff(diff, row, v.version);
-      diff.classList.add("open");
-    } catch (err) {
-      diff.textContent = "Could not load this version: " + err.message;
-      diff.classList.add("open");
-    }
-    setBtn(view, "code", "View changes");
-    view.disabled = false;
-  };
-  acts.appendChild(view);
-
-  if (!isHead) {
-    const restore = document.createElement("button");
-    setBtn(restore, "rotate-cw", "Restore this");
-    restore.onclick = () => restoreVersion(v.version);
-    acts.appendChild(restore);
-  }
-  return row;
-}
-
-/** Snapshot for a version, fetched once. */
-async function loadVersion(n) {
-  if (versionCache[n]) return versionCache[n];
-  const r = await fetch("/api/projects/" + currentProjectId + "/versions/" + n);
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  versionCache[n] = await r.json();
-  return versionCache[n];
-}
-
-function filesOf(p) {
-  const m = {};
-  if (p.code) m["index.html"] = p.code;          // single-file targets
-  for (const f of p.files || []) m[f.path] = f.content;
-  return m;
-}
-
-/** Fill the file chips and the diff body for one version. */
-async function fillDiff(diff, row, n) {
-  const cur = filesOf(await loadVersion(n));
-  // Version 1 has nothing before it, so every file reads as added.
-  const prev = n > 1 ? filesOf(await loadVersion(n - 1)) : {};
-
-  const names = [...new Set([...Object.keys(cur), ...Object.keys(prev)])].sort();
-  const changed = names.filter((p) => cur[p] !== prev[p]);
-
-  const chips = row.querySelector(".files");
-  chips.innerHTML = "";
-  if (!changed.length) {
-    chips.innerHTML = '<span class="f">no file changes</span>';
-  }
-  for (const p of changed) {
-    const s = document.createElement("span");
-    const added = !(p in prev), removed = !(p in cur);
-    s.className = "f" + (added ? " add" : removed ? " del" : "");
-    s.textContent = (added ? "+ " : removed ? "− " : "~ ") + p;
-    chips.appendChild(s);
-  }
-
-  diff.innerHTML = "";
-  if (!changed.length) {
-    diff.innerHTML = '<div class="skip">This version changed no files.</div>';
-    return;
-  }
-  for (const p of changed) {
-    const head = document.createElement("div");
-    head.className = "fh";
-    head.textContent = p;
-    diff.appendChild(head);
-    const pre = document.createElement("pre");
-    renderDiff(pre, prev[p] ?? "", cur[p] ?? "");
-    diff.appendChild(pre);
-  }
-}
-
-/**
- * Line diff, longest-common-subsequence.
- *
- * Deliberately not a library: files here are a few hundred lines, the
- * table is O(n·m) on that and finishes instantly, and adding a bundler
- * dependency to this page is the thing the whole preview design
- * avoids. Context is trimmed to 3 lines so a one-line change reads as
- * a one-line change.
- */
-function renderDiff(pre, before, after) {
-  const A = before ? before.split("\n") : [];
-  const B = after ? after.split("\n") : [];
-  const CAP = 4000;   // pathological files fall back to a summary
-  if (A.length > CAP || B.length > CAP) {
-    const s = document.createElement("span");
-    s.className = "ln h";
-    s.textContent = "  (file too large to diff — " + A.length + " → " + B.length + " lines)";
-    pre.appendChild(s);
-    return;
-  }
-
-  const n = A.length, m = B.length;
-  const lcs = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
-  for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      lcs[i][j] = A[i] === B[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
-    }
-  }
-  const ops = [];
-  let i = 0, j = 0;
-  while (i < n && j < m) {
-    if (A[i] === B[j]) { ops.push(["=", A[i]]); i++; j++; }
-    else if (lcs[i + 1][j] >= lcs[i][j + 1]) { ops.push(["-", A[i]]); i++; }
-    else { ops.push(["+", B[j]]); j++; }
-  }
-  while (i < n) ops.push(["-", A[i++]]);
-  while (j < m) ops.push(["+", B[j++]]);
-
-  // Keep 3 unchanged lines either side of each edit; collapse the rest.
-  const keep = new Array(ops.length).fill(false);
-  ops.forEach((o, k) => {
-    if (o[0] === "=") return;
-    for (let x = Math.max(0, k - 3); x <= Math.min(ops.length - 1, k + 3); x++) keep[x] = true;
-  });
-
-  let hidden = 0;
-  const flush = () => {
-    if (!hidden) return;
-    const s = document.createElement("div");
-    s.className = "skip";
-    s.textContent = hidden + " unchanged line" + (hidden === 1 ? "" : "s");
-    pre.appendChild(s);
-    hidden = 0;
-  };
-  ops.forEach((o, k) => {
-    if (!keep[k]) { hidden++; return; }
-    flush();
-    const s = document.createElement("span");
-    s.className = "ln" + (o[0] === "+" ? " a" : o[0] === "-" ? " r" : "");
-    s.textContent = (o[0] === "=" ? "  " : o[0] + " ") + o[1];
-    pre.appendChild(s);
-  });
-  flush();
-}
-
-async function restoreVersion(n) {
-  if (busy) return;
-  if (!confirm("Restore version " + n + "? Your current state is kept as a version, so this can be undone.")) return;
-  try {
-    const p = await readJson(await fetch(
-      "/api/projects/" + currentProjectId + "/restore/" + n, { method: "POST" }));
-    applyLoaded(p);
-    versionCache = {};
-    await refreshHistory();
-    await renderHistory();
-    addMsg("bot", "Rolled back to version " + n + ". That rollback is itself a version, so you can undo it.");
-    if (canPreview(project)) runLivePreview({ auto: true });
-  } catch (err) {
-    showToast({ kind: "restore", title: "Could not restore that version", detail: err.message });
-  }
-}
-
-// ── Demo data ───────────────────────────────────────────────
-// Generated apps put their seed data behind one exported boolean, so
-// the difference between "show me what this looks like" and "hand this
-// to staff on Monday" is a single line — not a regeneration.
-
-const DEMO_RE = /^(\s*export\s+const\s+USE_DEMO_DATA\s*=\s*)(true|false)(\s*;?)/m;
-
-/** The file carrying the flag, or null if this project has none. */
-function demoFlagFile() {
-  if (!project || !project.files) return null;
-  return project.files.find((f) => DEMO_RE.test(f.content)) || null;
-}
-
-function syncDemoToggle() {
-  const f = demoFlagFile();
-  $("demoWrap").style.display = f ? "" : "none";
-  if (f) $("demoTgl").checked = /=\s*true/.test(DEMO_RE.exec(f.content)[0]);
-}
-
-$("demoTgl").onchange = async () => {
-  const f = demoFlagFile();
-  if (!f) return;
-  const on = $("demoTgl").checked;
-  f.content = f.content.replace(DEMO_RE, (_m, a, _b, c) => a + (on ? "true" : "false") + c);
-  renderProject();
-  // silent: flipping a switch is not a build, so it must not create a
-  // restore point.
-  autoSave({ silent: true });
-  if (canPreview(project)) runLivePreview({ auto: true });
-  showToast({
-    kind: "demo", info: true,
-    title: on ? "Demo data on — sample records are showing." : "Demo data off — the app starts empty, ready for real entry.",
-  });
-  setTimeout(() => clearToasts("demo"), 4000);
-};
-
-$("reloadBtn").onclick = () => {
-  if (!project) return;
-  if (canPreview(project)) { runLivePreview({ auto: true }); return; }
-  if (isWeb(project)) { renderProject(); showTab("preview"); }
-};
-
-$("popoutBtn").onclick = () => {
-  if (!project) return;
-  if (canPreview(project) && liveUrl) { window.open(liveUrl + "?t=" + Date.now(), "_blank"); return; }
-  if (isWeb(project)) {
-    // Single-file targets live in a srcdoc, so there is no URL to open —
-    // hand the browser a blob instead.
-    const url = URL.createObjectURL(new Blob([project.code], { type: "text/html" }));
-    window.open(url, "_blank");
-  }
-};
 
 // New project when target changes (a Flutter app can't continue a web chat).
 function syncVideoControls() {
@@ -2683,7 +980,7 @@ $("publishBtn").onclick = async () => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Publish failed");
-    note.textContent = "Live on the web: ";
+    note.textContent = "🚀 Live on the web: ";
     const a = document.createElement("a");
     a.href = data.url;
     a.target = "_blank";
@@ -2691,7 +988,7 @@ $("publishBtn").onclick = async () => {
     a.style.color = "#9db4ff";
     note.appendChild(a);
   } catch (err) {
-    note.textContent = "" + err.message;
+    note.textContent = "⚠️ " + err.message;
     note.className = "msg err";
   }
 };
@@ -2704,9 +1001,6 @@ let currentProjectId = null;
 
 function applyLoaded(p) {
   firstPrompt = p.prompt || p.name || firstPrompt;
-  brain = (p.brain && p.brain.phases) ? p.brain : null;
-  renderBrain();
-  showSuggestions([]);
   project = { target: p.target || "web", code: p.code || "", files: p.files || [], binaries: p.binaries || [] };
   activeFile = 0;
   $("targetSel").value = project.target;
@@ -2714,659 +1008,81 @@ function applyLoaded(p) {
 }
 
 async function refreshHistory() {
-  // Was a header dropdown. It duplicated the History tab, and the
-  // header was already overfull — so it became a count on the tab
-  // instead, which is also the first thing you look at to know
-  // whether there is anything to look at.
-  versionCache = {};
-  const badge = $("histCount2");
-  if (!currentProjectId) { badge.textContent = ""; return; }
+  const sel = $("historySel");
+  if (!currentProjectId) { sel.style.display = "none"; return; }
   let versions = [];
   try {
     versions = await fetch("/api/projects/" + currentProjectId + "/versions").then(r => r.json());
-  } catch { /* older server without history — leave the badge blank */ }
-  badge.textContent = Array.isArray(versions) && versions.length ? String(versions.length) : "";
-  if ($("histWrap").style.display === "flex") renderHistory();
+  } catch { /* older server without history — just hide the control */ }
+  if (!Array.isArray(versions) || versions.length === 0) { sel.style.display = "none"; return; }
+
+  sel.innerHTML = '<option value="">🕘 History (' + versions.length + ')…</option>';
+  for (const v of versions) {
+    const opt = document.createElement("option");
+    opt.value = String(v.version);
+    const when = new Date(v.createdAt).toLocaleString();
+    opt.textContent = "v" + v.version + " — " + v.label + "  (" + when + ")";
+    sel.appendChild(opt);
+  }
+  sel.style.display = "";
 }
 
-// Saving is automatic now, so the button is a manual checkpoint. It
-// reports on itself rather than posting to the chat — three identical
-// "Saved" bubbles in a row is noise, not feedback.
 $("saveBtn").onclick = async () => {
-  const btn = $("saveBtn");
-  const restore = () => setTimeout(() => { setBtn(btn, "save", "Save"); btn.disabled = false; }, 1800);
-  btn.disabled = true;
-  setBtn(btn, "save", "Saving…");
-  const ok = await autoSave();
-  await refreshHistory();
-  setBtn(btn, ok ? "check" : "alert", ok ? "Saved" : "Failed");
-  restore();
+  try {
+    if (currentProjectId) {
+      const res = await fetch("/api/projects/" + currentProjectId, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: firstPrompt, target: project.target, code: project.code, files: project.files, binaries: project.binaries || [] }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "save failed");
+      await refreshHistory();
+      addMsg("bot", "💾 Saved. Earlier versions are in the History menu.");
+      return;
+    }
+    const name = prompt("Name this project:", firstPrompt.slice(0, 40));
+    if (!name) return;
+    const res = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name, prompt: firstPrompt, target: project.target, code: project.code, files: project.files, binaries: project.binaries || [] }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || "save failed");
+    currentProjectId = (await res.json()).id;
+    await refreshProjects();
+    await refreshHistory();
+    addMsg("bot", "💾 Saved as “" + name + "”. From now on Save keeps a version each time.");
+  } catch (err) {
+    addMsg("err", "Save failed: " + err.message);
+  }
 };
 
 $("projectSel").onchange = async (e) => {
-  const id = e.target.value;
+  if (!e.target.value) return;
+  const p = await fetch("/api/projects/" + e.target.value).then(r => r.json());
+  currentProjectId = p.id;
+  applyLoaded(p);
+  await refreshHistory();
+  addMsg("bot", "📂 Loaded “" + p.name + "”. Tell me what to change.");
   e.target.value = "";
-  if (id) await openProject(id);
 };
 
-
-// ── Appearance ──────────────────────────────────────────────
-// Three states, not two. "System" is the honest default: a builder
-// tool that ignores the OS setting is the thing that feels wrong at
-// 11pm, and it is the one preference people never think to set.
-const THEME_KEY = "cp.theme";
-const sysDark = window.matchMedia("(prefers-color-scheme: dark)");
-
-function themePref() {
-  const v = localStorage.getItem(THEME_KEY);
-  return v === "light" || v === "dark" ? v : "system";
-}
-
-function applyTheme() {
-  const pref = themePref();
-  const actual = pref === "system" ? (sysDark.matches ? "dark" : "light") : pref;
-  document.documentElement.setAttribute("data-theme", actual);
-  // Tells the browser to draw native widgets (scrollbars, form
-  // controls, the address bar on mobile) to match. Without it a light
-  // theme still gets dark scrollbars.
-  document.documentElement.style.colorScheme = actual;
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", actual === "dark" ? "#0e1015" : "#ffffff");
-  for (const b of document.querySelectorAll("#themeSeg button")) {
-    b.classList.toggle("on", b.getAttribute("data-theme-set") === pref);
-  }
-}
-
-function setTheme(pref) {
-  if (pref === "system") localStorage.removeItem(THEME_KEY);
-  else localStorage.setItem(THEME_KEY, pref);
-  applyTheme();
-}
-
-// Only matters while the preference is "system", but the listener is
-// harmless otherwise and re-reading the pref keeps it correct.
-sysDark.addEventListener("change", applyTheme);
-
-// ── Project menu ────────────────────────────────────────────
-const menu = $("projMenu");
-const scrim = $("scrim");
-
-function closeMenu() {
-  menu.classList.remove("open");
-  scrim.classList.remove("open");
-  $("brandBtn").classList.remove("open");
-  $("brandBtn").setAttribute("aria-expanded", "false");
-}
-
-function openMenu() {
-  // Anchored under the brand button rather than absolutely positioned
-  // inside it: the header scrolls horizontally on a narrow window, and
-  // a child of a scrolling box gets clipped by it.
-  const r = $("brandBtn").getBoundingClientRect();
-  menu.style.left = Math.max(8, r.left) + "px";
-  menu.style.top = r.bottom + 6 + "px";
-  menu.classList.add("open");
-  scrim.classList.add("open");
-  $("brandBtn").classList.add("open");
-  $("brandBtn").setAttribute("aria-expanded", "true");
-  syncMenu();
-}
-
-/** Enable only what makes sense, and show what is actually open. */
-function syncMenu() {
-  const has = Boolean(project);
-  for (const id of ["mRename", "mSave", "mDownload", "mPublish"]) $(id).disabled = !has;
-  $("menuTitle").textContent = has ? (projectName || "Untitled project") : "No project open";
-  const bits = [];
-  if (has) {
-    bits.push(targetInfo(project.target).label);
-    const n = (project.files || []).length;
-    bits.push(n ? n + (n === 1 ? " file" : " files") : "single file");
-    if (currentProjectId) bits.push("saved");
-    else bits.push("not saved yet");
-  }
-  $("menuMeta").textContent = has ? bits.join(" · ") : "Describe an app in the box on the left to start one.";
-}
-
-/** The brand doubles as a title bar: it should say what is open. */
-let projectName = "";
-function setProjectName(name) {
-  projectName = name || "";
-  $("brandSub").textContent = projectName || "No project open";
-}
-
-$("brandBtn").onclick = (e) => {
-  e.stopPropagation();
-  menu.classList.contains("open") ? closeMenu() : openMenu();
-};
-scrim.onclick = closeMenu;
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeMenu();
-  // Ctrl/Cmd+S saves rather than letting the browser offer to save the page.
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-    e.preventDefault();
-    if (project) $("saveBtn").click();
-  }
-});
-window.addEventListener("resize", () => { if (menu.classList.contains("open")) openMenu(); });
-
-for (const b of document.querySelectorAll("#themeSeg button")) {
-  b.onclick = () => setTheme(b.getAttribute("data-theme-set"));
-}
-
-// The menu items are deliberately thin wrappers over the header
-// buttons. Two code paths for "download this project" is how the two
-// drift apart.
-$("mSave").onclick = () => { closeMenu(); $("saveBtn").click(); };
-$("mDownload").onclick = () => { closeMenu(); $("downloadBtn").click(); };
-$("mPublish").onclick = () => { closeMenu(); $("publishBtn").click(); };
-$("mNew").onclick = () => { closeMenu(); location.href = location.pathname; };
-$("mRename").onclick = async () => {
-  closeMenu();
-  const next = prompt("Rename project", projectName || "Untitled project");
-  if (next === null) return;
-  const name = next.trim();
-  if (!name || name === projectName) return;
-  setProjectName(name);
-  if (currentProjectId) {
-    try {
-      await fetch("/api/projects/" + currentProjectId, {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        // silent: a rename is not a build, so it must not create a
-        // restore point. Same reasoning as ticking a task.
-        body: JSON.stringify({ name, silent: true }),
-      });
-      await refreshProjects();
-    } catch (err) {
-      addMsg("err", "Could not rename: " + err.message);
-    }
-  }
-};
-
-/**
- * Live progress while the model writes.
- *
- * A real percentage is not knowable: nobody knows how many files the
- * reply will contain until it contains them. But the two questions
- * people actually have — is it moving, and how far in is it — are both
- * answerable from the stream itself.
- */
-function showProgress(el, streamed, startedAt) {
-  const started = [...streamed.matchAll(/^===FILE:\s*(.+?)\s*===/gm)].map((m) => m[1]);
-  const finished = (streamed.match(/^===ENDFILE===/gm) || []).length;
-  const secs = Math.round((Date.now() - startedAt) / 1000);
-  const current = started[started.length - 1];
-
-  let line;
-  if (!started.length) {
-    line = "Thinking\u2026  " + secs + "s";
-  } else {
-    const done = finished + " of " + started.length + " file" + (started.length === 1 ? "" : "s");
-    line = "Writing " + (current || "") + "  \u00b7  " + done + "  \u00b7  " + secs + "s";
-  }
-  el.innerHTML = '<span class="spinner"></span>';
-  el.appendChild(document.createTextNode(line));
-}
-
-// ── Live colouring while the model writes ───────────────────
-// The Code tab used to show the raw stream as one grey wall, which is
-// why it looked like everything was being rewritten even after edits
-// became merges. It now colours as it arrives: a file header says
-// whether that file is new or being changed, and once a file finishes
-// its lines are diffed against what was there before — green added,
-// red removed, dim unchanged.
-//
-// Only completed files are diffed. The one still streaming is shown
-// plain, because half a file diffs as "everything removed" and that
-// would be actively misleading.
-
-let paintPending = null;
-
-function paintStream(text) {
-  // Throttled: a diff per chunk on a 500-line file would drop frames.
-  if (paintPending) return;
-  paintPending = setTimeout(() => { paintPending = null; doPaintStream(text); }, 90);
-}
-
-function doPaintStream(text) {
-  const view = $("codeView");
-  const atBottom = view.scrollHeight - view.scrollTop - view.clientHeight < 60;
-  const before = new Map((project && project.files ? project.files : []).map((f) => [f.path, f.content]));
-
-  view.innerHTML = "";
-  const frag = document.createDocumentFragment();
-
-  // Split on file markers, keeping what precedes the first one.
-  const parts = text.split(/^===FILE:\s*(.+?)\s*===$/m);
-  if (parts[0] && parts[0].trim()) {
-    const pre = document.createElement("div");
-    pre.className = "sLead";
-    pre.textContent = parts[0].trim();
-    frag.appendChild(pre);
-  }
-
-  for (let i = 1; i < parts.length; i += 2) {
-    const path = parts[i];
-    let body = parts[i + 1] ?? "";
-    const closed = /^===ENDFILE===$/m.test(body);
-    body = body.replace(/^===ENDFILE===[\s\S]*$/m, "");
-
-    const isNew = !before.has(path);
-    const head = document.createElement("div");
-    head.className = "sFile " + (isNew ? "isNew" : "isMod");
-    head.textContent = (isNew ? "+ new file  " : "~ changing  ") + path +
-      (closed ? "  \u00b7  " + body.split("\n").length + " lines" : "  \u00b7  writing\u2026");
-    frag.appendChild(head);
-
-    const pre = document.createElement("div");
-    pre.className = "sBody";
-    if (closed && !isNew) {
-      paintDiffInto(pre, before.get(path) || "", body);
-    } else {
-      // A new file is all addition; an unfinished one is not yet
-      // comparable to anything.
-      for (const line of body.split("\n")) {
-        const el = document.createElement("span");
-        el.className = "ln" + (closed && isNew ? " a" : "");
-        el.textContent = (closed && isNew ? "+ " : "  ") + line;
-        pre.appendChild(el);
-      }
-    }
-    frag.appendChild(pre);
-  }
-
-  view.appendChild(frag);
-  if (atBottom) view.scrollTop = view.scrollHeight;
-}
-
-/** Line diff into an element, reusing the History tab's renderer. */
-function paintDiffInto(el, before, after) {
-  const pre = document.createElement("pre");
-  pre.style.margin = "0";
-  renderDiff(pre, before, after);
-  while (pre.firstChild) el.appendChild(pre.firstChild);
-}
-
-// ── Size health ─────────────────────────────────────────────
-// A file that keeps growing is what eventually breaks this platform:
-// every edit sends it and gets it back, so a 1,200-line component
-// makes each change slow, costly and far more likely to be truncated.
-// The failure looks like a bad model; it is a bad file. So the size is
-// visible, and the fix is one click.
-
-let health = null;
-
-async function refreshHealth() {
-  if (!project || !project.files || !project.files.length) { health = null; return; }
+$("historySel").onchange = async (e) => {
+  const version = e.target.value;
+  e.target.value = "";
+  if (!version || !currentProjectId) return;
+  if (!confirm("Roll back to version " + version + "?\n\nNothing is lost — the rollback becomes a new version, so you can undo it.")) return;
   try {
-    health = await fetch("/api/code-health", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ files: project.files }),
-    }).then((r) => r.json());
-  } catch { health = null; }
-  renderFileTabs();
-  renderHealthBar();
-}
-
-function healthOf(path) {
-  if (!health) return null;
-  return health.files.find((f) => f.path === path) || null;
-}
-
-function renderHealthBar() {
-  const bar = $("healthBar");
-  bar.innerHTML = "";
-  if (!health || !health.worst.length) { bar.style.display = "none"; return; }
-  bar.style.display = "";
-
-  const w = health.worst[0];
-  const rest = health.worst.length - 1;
-  const ic = document.createElement("span");
-  ic.innerHTML = icon("alert", "sm");
-  bar.appendChild(ic);
-
-  const txt = document.createElement("span");
-  txt.className = "t";
-  txt.textContent =
-    w.path + " is " + w.lines + " lines" +
-    (rest > 0 ? " (and " + rest + " more over " + health.limits.file + ")" : "") +
-    " \u2014 big files make every edit slower and more likely to be cut off.";
-  bar.appendChild(txt);
-
-  const go = document.createElement("button");
-  setBtn(go, "sparkles", "Split it up");
-  go.onclick = () => {
-    if (busy || !health.refactor) return;
-    $("promptBox").value = health.refactor;
-    send();
-  };
-  bar.appendChild(go);
-}
-
-
-// ── Connectors ──────────────────────────────────────────────
-// A connector links a project to a service the user already pays for.
-// Two are wired up. The whole catalogue is shown anyway, with honest
-// status: listing only the working two answers "what can this do?"
-// with "almost nothing", which is discouraging and untrue about the
-// direction. Every "soon" card links out to the service, so it is
-// useful today even though the integration is not.
-
-let catalogue = [];          // from /api/connectors
-let categories = [];
-let linked = {};             // kind -> saved integration
-let conFilter = "all";       // "all" | "enabled" | a category
-let conQuery = "";
-let conOpen = null;          // the connector being viewed, or null
-
-async function openIntegrations() {
-  closeMenu();
-  $("intPanel").classList.add("open");
-  $("intScrim").classList.add("open");
-  conOpen = null;
-  conFilter = "all";
-  conQuery = "";
-  $("conSearch").value = "";
-  await loadConnectors();
-  renderConnectors();
-}
-
-function closeIntegrations() {
-  $("intPanel").classList.remove("open");
-  $("intScrim").classList.remove("open");
-}
-
-async function loadConnectors() {
-  if (!catalogue.length) {
-    try {
-      const d = await fetch("/api/connectors").then((r) => r.json());
-      catalogue = d.connectors || [];
-      categories = d.categories || [];
-    } catch { catalogue = []; }
-  }
-  linked = {};
-  if (!currentProjectId) return;
-  try {
-    const live = await fetch("/api/projects/" + currentProjectId + "/integrations").then((r) => r.json());
-    for (const i of (Array.isArray(live) ? live : [])) linked[i.kind] = i;
-  } catch { /* an unlinked view is the honest fallback */ }
-}
-
-function tile(c, cls) {
-  const el = document.createElement("span");
-  el.className = "tile" + (cls ? " " + cls : "");
-  el.style.background = c.tint;
-  el.textContent = c.mark;
-  if (c.status === "available") {
-    const pip = document.createElement("span");
-    pip.className = "pip";
-    pip.style.background = linked[c.id] ? "var(--good)" : "var(--faint)";
-    pip.title = linked[c.id] ? "Connected" : "Available — not connected";
-    el.appendChild(pip);
-  }
-  return el;
-}
-
-function matches(c) {
-  if (conFilter === "enabled" && c.status !== "available") return false;
-  if (conFilter !== "all" && conFilter !== "enabled" && c.category !== conFilter) return false;
-  if (!conQuery) return true;
-  const q = conQuery.toLowerCase();
-  return c.name.toLowerCase().includes(q) || c.blurb.toLowerCase().includes(q);
-}
-
-function renderNav() {
-  const nav = $("conNav");
-  nav.innerHTML = "";
-  const add = (key, label, count) => {
-    const b = document.createElement("button");
-    b.className = conFilter === key ? "on" : "";
-    b.innerHTML = '<span class="n"></span><span class="c"></span>';
-    b.querySelector(".n").textContent = label;
-    b.querySelector(".c").textContent = String(count);
-    b.onclick = () => { conFilter = key; conOpen = null; renderConnectors(); };
-    nav.appendChild(b);
-  };
-
-  add("enabled", "Available", catalogue.filter((c) => c.status === "available").length);
-  add("all", "All", catalogue.length);
-
-  const head = document.createElement("div");
-  head.className = "grp";
-  head.textContent = "Categories";
-  nav.appendChild(head);
-
-  for (const cat of categories) {
-    const n = catalogue.filter((c) => c.category === cat).length;
-    if (n) add(cat, cat, n);
-  }
-}
-
-function renderConnectors() {
-  renderNav();
-  $("intCrumb").textContent = conOpen ? conOpen.name : "";
-  const body = $("intBody");
-  body.innerHTML = "";
-
-  if (conOpen) return renderConnectorDetail(body, conOpen);
-
-  const list = catalogue.filter(matches)
-    // Working ones first — the useful answer to "what can I use now?"
-    .sort((a, b) => (a.status === "available" ? 0 : 1) - (b.status === "available" ? 0 : 1)
-      || a.name.localeCompare(b.name));
-
-  if (!list.length) {
-    body.innerHTML = '<div class="empty2">Nothing matches that.</div>';
-    return;
-  }
-
-  const grid = document.createElement("div");
-  grid.className = "conGrid";
-  for (const c of list) {
-    const card = document.createElement("button");
-    card.className = "conCard";
-    card.appendChild(tile(c));
-    const bd = document.createElement("div");
-    bd.className = "bd";
-    const nm = document.createElement("div");
-    nm.className = "nm";
-    nm.appendChild(document.createTextNode(c.name));
-    const pill = document.createElement("span");
-    pill.className = "pill" + (linked[c.id] ? " ok" : "");
-    pill.textContent = linked[c.id] ? "Connected" : c.status === "available" ? "Available" : "Soon";
-    nm.appendChild(pill);
-    bd.appendChild(nm);
-    const bl = document.createElement("div");
-    bl.className = "bl";
-    bl.textContent = c.blurb;
-    bd.appendChild(bl);
-    card.appendChild(bd);
-    card.onclick = () => { conOpen = c; renderConnectors(); };
-    grid.appendChild(card);
-  }
-  body.appendChild(grid);
-}
-
-function renderConnectorDetail(body, c) {
-  const back = document.createElement("button");
-  back.className = "back";
-  setBtn(back, "chevron-down", "All connectors");
-  back.querySelector("svg").style.transform = "rotate(90deg)";
-  back.onclick = () => { conOpen = null; renderConnectors(); };
-  body.appendChild(back);
-
-  const head = document.createElement("div");
-  head.className = "conHead";
-  head.appendChild(tile(c));
-  const t = document.createElement("div");
-  t.innerHTML = "<h3></h3><div class='sub'></div>";
-  t.querySelector("h3").textContent = c.name;
-  t.querySelector(".sub").textContent =
-    linked[c.id] ? "Connected" : c.status === "available" ? "Available" : "Coming soon";
-  head.appendChild(t);
-  body.appendChild(head);
-
-  const lead = document.createElement("div");
-  lead.className = "sect";
-  lead.textContent = "Overview";
-  body.appendChild(lead);
-  const p = document.createElement("div");
-  p.className = "lead";
-  p.textContent = c.blurb;
-  body.appendChild(p);
-
-  if (c.status !== "available") {
-    const note = document.createElement("div");
-    note.className = "note";
-    note.innerHTML = icon("alert", "sm") +
-      "<div><strong>Not built yet.</strong> This one is catalogued and planned, " +
-      "but linking it does nothing today. It is listed so you can see where this is " +
-      "going — and so the link below is at least useful now.</div>";
-    body.appendChild(note);
-    if (c.url) {
-      const a = document.createElement("a");
-      a.href = c.url;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.className = "back";
-      a.style.display = "inline-flex";
-      a.style.alignItems = "center";
-      a.style.gap = "6px";
-      a.style.textDecoration = "none";
-      a.innerHTML = icon("external-link", "sm");
-      a.appendChild(document.createTextNode("Visit " + c.name));
-      body.appendChild(a);
-    }
-    return;
-  }
-
-  const cs = document.createElement("div");
-  cs.className = "sect";
-  cs.textContent = "Connection";
-  body.appendChild(cs);
-
-  if (!c.fields) {
-    const d = document.createElement("div");
-    d.className = "lead";
-    d.textContent = "Built in — nothing to configure. It is available to every project already.";
-    body.appendChild(d);
-    return;
-  }
-
-  if (!currentProjectId) {
-    body.innerHTML += '<div class="empty2">Save this project first — a connection is stored against it.</div>';
-    return;
-  }
-
-  const cur = linked[c.id];
-  const card = document.createElement("div");
-  card.className = "intCard";
-
-  for (const f of c.fields) {
-    const l = document.createElement("label");
-    l.textContent = f.label;
-    const inp = document.createElement("input");
-    inp.type = "text";
-    inp.placeholder = f.placeholder;
-    inp.value = (cur && cur.config && cur.config[f.key]) || "";
-    inp.dataset.field = f.key;
-    card.appendChild(l);
-    card.appendChild(inp);
-  }
-
-  const sl = document.createElement("label");
-  sl.textContent = c.secretLabel + (cur && cur.hasSecret ? " — saved, leave blank to keep" : "");
-  const sec = document.createElement("input");
-  sec.type = "password";
-  sec.placeholder = cur && cur.hasSecret ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : "Paste it here";
-  sec.autocomplete = "off";
-  sec.dataset.secret = "1";
-  card.appendChild(sl);
-  card.appendChild(sec);
-
-  const hint = document.createElement("div");
-  hint.className = "d";
-  hint.textContent = c.secretHint;
-  card.appendChild(hint);
-
-  const acts = document.createElement("div");
-  acts.className = "acts";
-  const save = document.createElement("button");
-  save.className = "primary";
-  setBtn(save, "check", cur ? "Update" : "Connect");
-  save.onclick = () => saveConnector(c, card, save);
-  acts.appendChild(save);
-  if (cur) {
-    const dis = document.createElement("button");
-    setBtn(dis, "x", "Disconnect");
-    dis.onclick = () => disconnectConnector(c.id);
-    acts.appendChild(dis);
-  }
-  card.appendChild(acts);
-  body.appendChild(card);
-
-  if (c.url) {
-    const a = document.createElement("a");
-    a.href = c.url;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.style.cssText = "display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);text-decoration:none;margin-top:6px";
-    a.innerHTML = icon("external-link", "sm");
-    a.appendChild(document.createTextNode(c.name + " docs"));
-    body.appendChild(a);
-  }
-}
-
-async function saveConnector(c, card, btn) {
-  const config = {};
-  for (const inp of card.querySelectorAll("input[data-field]")) {
-    config[inp.dataset.field] = inp.value.trim();
-  }
-  const secretInput = card.querySelector("input[data-secret]");
-  btn.disabled = true;
-  setBtn(btn, "check", "Saving\u2026");
-  try {
-    const r = await fetch("/api/projects/" + currentProjectId + "/integrations/" + c.id, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ config, secret: secretInput.value }),
-    });
-    if (!r.ok) throw new Error(((await r.json()) || {}).error || "Could not save");
-    secretInput.value = "";   // never leave a secret sitting in the DOM
-    await loadConnectors();
-    renderConnectors();
+    const res = await fetch("/api/projects/" + currentProjectId + "/restore/" + version, { method: "POST" });
+    if (!res.ok) throw new Error((await res.json()).error || "restore failed");
+    applyLoaded(await res.json());
+    await refreshHistory();
+    addMsg("bot", "↩️ Rolled back to version " + version + ". That rollback is itself a version, so you can undo it.");
   } catch (err) {
-    btn.disabled = false;
-    setBtn(btn, "alert", "Failed");
-    showToast({ kind: "int", title: c.name + " could not be linked", detail: err.message });
+    addMsg("err", "Restore failed: " + err.message);
   }
-}
-
-async function disconnectConnector(kind) {
-  if (!confirm("Disconnect this? The stored credential is deleted.")) return;
-  try {
-    await fetch("/api/projects/" + currentProjectId + "/integrations/" + kind, { method: "DELETE" });
-    await loadConnectors();
-    renderConnectors();
-  } catch (err) {
-    showToast({ kind: "int", title: "Could not disconnect", detail: err.message });
-  }
-}
-
-$("conSearch").oninput = (e) => {
-  conQuery = e.target.value.trim();
-  conOpen = null;
-  renderConnectors();
 };
 
-$("mIntegrations").onclick = openIntegrations;
-$("intClose").onclick = closeIntegrations;
-$("intScrim").onclick = closeIntegrations;
-
-applyTheme();
-paintIcons();
 init();
 </script>
 </body>
