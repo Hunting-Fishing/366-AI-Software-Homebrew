@@ -90,19 +90,30 @@ button{cursor:pointer}
 .glow.one{width:520px;height:520px;background:#ffd89d;top:-240px;left:24%}
 .glow.two{width:480px;height:480px;background:#72d8cb;right:-250px;bottom:-240px;opacity:.34}
 .noise{position:absolute;inset:0;z-index:-1;opacity:.028;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.9'/%3E%3C/svg%3E")}
-.story{position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:46px clamp(38px,6vw,96px) 52px;min-height:100vh;min-height:100dvh;border-right:1px solid rgba(255,255,255,.28);background:linear-gradient(90deg,rgba(5,63,62,.74),rgba(7,91,86,.34)),url("/assets/366-tropical-auth-hero.svg") center/cover no-repeat;color:#fff}
+.story{position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:40px clamp(38px,5.2vw,82px) 40px;min-height:100vh;min-height:100dvh;border-right:1px solid rgba(255,255,255,.28);background:linear-gradient(90deg,rgba(5,63,62,.72),rgba(7,91,86,.28)),url("/assets/366-tropical-auth-hero.png") center/cover no-repeat;color:#fff}
 .brand{display:inline-flex;align-items:center;gap:12px;color:#fff;text-decoration:none;font-size:15px;font-weight:750;letter-spacing:-.01em;width:max-content}
 .mark{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:linear-gradient(145deg,#ffb064,#f27e5f);box-shadow:0 10px 35px rgba(110,55,31,.3);font-size:19px}
 .brand small{display:block;color:#828598;font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;margin-top:2px}
-.hero{max-width:720px;margin:60px 0}
+.hero{max-width:720px;margin:38px 0 22px}
 .eyebrow{display:inline-flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid rgba(255,255,255,.36);background:rgba(255,255,255,.14);backdrop-filter:blur(10px);border-radius:999px;color:#fff8de;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
 .eyebrow i{width:7px;height:7px;border-radius:50%;background:#ffb66f;box-shadow:0 0 16px #ffd09e}
-h1{font-size:clamp(48px,6vw,86px);line-height:.96;letter-spacing:-.065em;margin:24px 0 24px;max-width:780px}
+h1{font-size:clamp(46px,5.4vw,78px);line-height:.96;letter-spacing:-.065em;margin:22px 0 20px;max-width:780px}
 h1 span{display:block;background:linear-gradient(100deg,#fff9dc 5%,#ffd29b 52%,#ff9d76 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .lede{max-width:610px;color:rgba(255,255,255,.88);font-size:clamp(17px,1.55vw,21px);line-height:1.62;margin:0;text-shadow:0 2px 22px rgba(0,41,41,.34)}
 .capabilities{display:flex;flex-wrap:wrap;gap:9px;margin-top:34px}
 .cap{display:flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid rgba(255,255,255,.26);border-radius:999px;background:rgba(2,52,52,.22);backdrop-filter:blur(10px);color:#fff;font-size:13px}
 .cap b{color:#ffbd7d;font-size:11px}
+.hero-actions{display:flex;align-items:center;gap:11px;margin-top:22px}
+.explore,.watch-demo{min-height:43px;padding:0 17px;border-radius:12px;font-size:13px;font-weight:800;transition:.2s ease}
+.explore{border:0;background:#fff7df;color:#075d59;box-shadow:0 12px 28px rgba(0,42,40,.22)}
+.explore:hover{transform:translateY(-2px);background:#fff}
+.watch-demo{border:1px solid rgba(255,255,255,.38);background:rgba(3,54,52,.2);color:#fff;backdrop-filter:blur(10px)}
+.watch-demo:hover{background:rgba(255,255,255,.15)}
+.mini-showcase{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:680px;margin-top:20px}
+.mini-card{display:flex;align-items:center;gap:10px;min-width:0;padding:10px;border:1px solid rgba(255,255,255,.22);border-radius:13px;background:rgba(1,48,47,.3);backdrop-filter:blur(12px);color:#fff}
+.mini-icon{display:grid;place-items:center;flex:0 0 35px;height:35px;border-radius:10px;background:linear-gradient(145deg,#ffe0a6,#ff8b68);color:#134c49;font-size:17px}
+.mini-card span{min-width:0;font-size:11px;color:rgba(255,255,255,.7)}
+.mini-card strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-size:12px;margin-bottom:2px}
 .proof{display:flex;align-items:center;gap:20px;color:rgba(255,255,255,.73);font-size:12px}
 .proof strong{color:#fff;font-size:13px}
 .proof-line{width:46px;height:1px;background:linear-gradient(90deg,#ffbd7d,transparent)}
@@ -138,6 +149,43 @@ p.ok{color:#087f78}
 .terms{color:#78908b;font-size:11px;line-height:1.55;margin:20px 0 0;text-align:center}
 .brand-home{display:block;margin-top:22px;color:#557a74;font-size:12px;text-align:center;text-decoration:none}
 .brand-home:hover{color:#087f78}
+.examples-link{display:block;width:100%;margin:13px 0 0;border:0;background:transparent;color:#087f78;font-size:12px;font-weight:750;text-align:center}
+.examples-link:hover{text-decoration:underline}
+.showcase{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(4,45,43,.62);backdrop-filter:blur(16px)}
+.showcase.open{display:flex}
+.showcase-panel{position:relative;width:min(1060px,100%);max-height:min(780px,calc(100dvh - 48px));overflow:auto;padding:34px;border:1px solid rgba(255,255,255,.74);border-radius:28px;background:linear-gradient(145deg,#fffdf6,#eaf8f3);box-shadow:0 36px 100px rgba(2,44,42,.34)}
+.showcase-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px}
+.showcase-kicker{color:#e36f51;font-size:11px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+.showcase h2{margin:5px 0 7px;font-size:clamp(28px,4vw,44px);letter-spacing:-.045em}
+.showcase-head p{max-width:620px;margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+.showcase-close{flex:0 0 42px;height:42px;border:1px solid var(--line);border-radius:12px;background:#fff;color:#426d68;font-size:22px}
+.creation-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.creation{overflow:hidden;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:0 15px 35px rgba(25,86,80,.08);transition:.22s ease}
+.creation:hover{transform:translateY(-4px);box-shadow:0 20px 42px rgba(25,86,80,.15)}
+.creation-visual{position:relative;height:142px;overflow:hidden;padding:15px}
+.creation-visual:after{content:"";position:absolute;inset:auto -20px -45px;width:140px;height:100px;border-radius:50%;background:rgba(255,255,255,.28);filter:blur(2px)}
+.cv-market{background:linear-gradient(135deg,#ffbe74,#f36f67)}
+.cv-mobile{background:linear-gradient(135deg,#55c8b8,#0f7778)}
+.cv-game{background:linear-gradient(135deg,#8b70dc,#4a3d94)}
+.cv-dashboard{background:linear-gradient(135deg,#54a8e8,#315aa8)}
+.cv-booking{background:linear-gradient(135deg,#f2bb6e,#d67d52)}
+.cv-ai{background:linear-gradient(135deg,#52c9aa,#087c70)}
+.mock-window{position:relative;z-index:1;height:100%;padding:10px;border-radius:10px;background:rgba(255,255,255,.94);box-shadow:0 12px 24px rgba(28,52,62,.2)}
+.mock-bar{width:42%;height:6px;border-radius:10px;background:#164e4b;margin-bottom:9px}
+.mock-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mock-box{height:64px;border-radius:7px;background:linear-gradient(145deg,#edf6f2,#d8eee7)}
+.mock-phone{position:relative;z-index:1;width:66px;height:116px;margin:auto;padding:7px;border:4px solid #143f43;border-radius:16px;background:#fff}
+.mock-phone div{height:100%;border-radius:8px;background:linear-gradient(#ffe3af 0 35%,#f3f8f5 35%)}
+.mock-game{position:relative;z-index:1;display:grid;place-items:center;height:100%;font-size:56px;filter:drop-shadow(0 12px 12px rgba(34,21,74,.25))}
+.creation-copy{padding:16px}
+.creation-type{color:#e36f51;font-size:10px;font-weight:850;letter-spacing:.1em;text-transform:uppercase}
+.creation h3{margin:5px 0 6px;font-size:16px;letter-spacing:-.02em}
+.creation p{min-height:39px;margin:0;color:var(--muted);font-size:12px;line-height:1.55}
+.creation-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px}
+.creation-tags span{padding:5px 7px;border-radius:7px;background:#edf6f2;color:#48736e;font-size:10px;font-weight:700}
+.showcase-foot{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:22px;padding:17px 18px;border-radius:15px;background:#0c716b;color:#fff}
+.showcase-foot p{margin:0;font-size:13px;line-height:1.45}
+.showcase-foot button{flex:0 0 auto;min-height:42px;padding:0 16px;border:0;border-radius:10px;background:#ffe2ac;color:#165651;font-weight:850}
 .mobile-brand{display:none}
 @media(max-width:900px){
 .shell{display:block;padding:0}
@@ -145,16 +193,35 @@ p.ok{color:#087f78}
 .auth-side{position:relative;min-height:100vh;min-height:100dvh;padding:28px 18px}
 .mobile-brand{display:flex;position:absolute;top:24px;left:24px}
 form{margin-top:68px;padding:30px 24px;border-radius:20px;max-width:480px}
+.creation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:430px){
 .auth-side{align-items:flex-start;padding:20px 14px 28px}
 .mobile-brand{top:20px;left:18px}
 form{padding:26px 18px;margin-top:64px}
 .form-top h2{font-size:26px}
+.showcase{padding:10px}
+.showcase-panel{max-height:calc(100dvh - 20px);padding:22px 15px;border-radius:20px}
+.creation-grid{grid-template-columns:1fr}
+.showcase-foot{align-items:flex-start;flex-direction:column}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}`;
 
 const PAGE_OPEN = `<div class="shell"><div class="glow one"></div><div class="glow two"></div><div class="noise"></div>
+<div class="showcase" id="showcase" role="dialog" aria-modal="true" aria-labelledby="showcaseTitle" onclick="closeShowcase(event)">
+  <div class="showcase-panel">
+    <div class="showcase-head"><div><span class="showcase-kicker">Made with 366</span><h2 id="showcaseTitle">Imagine it. Then build it.</h2><p>Start from a simple conversation and produce real, editable software. These examples show the range of projects 366 AI Designer is being built to support.</p></div><button class="showcase-close" type="button" aria-label="Close examples" onclick="closeShowcase()">×</button></div>
+    <div class="creation-grid">
+      <article class="creation"><div class="creation-visual cv-market"><div class="mock-window"><div class="mock-bar"></div><div class="mock-row"><i class="mock-box"></i><i class="mock-box"></i><i class="mock-box"></i></div></div></div><div class="creation-copy"><span class="creation-type">Marketplace</span><h3>Vehicle sales platform</h3><p>Search, seller profiles, listings, subscriptions and secure enquiries.</p><div class="creation-tags"><span>React</span><span>Supabase</span><span>Payments</span></div></div></article>
+      <article class="creation"><div class="creation-visual cv-mobile"><div class="mock-phone"><div></div></div></div><div class="creation-copy"><span class="creation-type">Mobile app</span><h3>Food & wellness coach</h3><p>Barcode scans, daily coaching, meal planning and user progress.</p><div class="creation-tags"><span>Flutter</span><span>AI</span><span>iOS + Android</span></div></div></article>
+      <article class="creation"><div class="creation-visual cv-game"><div class="mock-game">🎮</div></div><div class="creation-copy"><span class="creation-type">Game</span><h3>Strategy card adventure</h3><p>Characters, collectible cards, quests, currencies and progression.</p><div class="creation-tags"><span>Game logic</span><span>Profiles</span><span>Multiplayer-ready</span></div></div></article>
+      <article class="creation"><div class="creation-visual cv-dashboard"><div class="mock-window"><div class="mock-bar"></div><div class="mock-row"><i class="mock-box"></i><i class="mock-box"></i><i class="mock-box"></i></div></div></div><div class="creation-copy"><span class="creation-type">Business software</span><h3>Operations dashboard</h3><p>Live metrics, customer records, workflows, roles and reporting.</p><div class="creation-tags"><span>Full-stack</span><span>Charts</span><span>Teams</span></div></div></article>
+      <article class="creation"><div class="creation-visual cv-booking"><div class="mock-phone"><div></div></div></div><div class="creation-copy"><span class="creation-type">Service app</span><h3>Travel & booking experience</h3><p>Beautiful destinations, availability, reservations and payments.</p><div class="creation-tags"><span>Responsive</span><span>Booking</span><span>Maps</span></div></div></article>
+      <article class="creation"><div class="creation-visual cv-ai"><div class="mock-window"><div class="mock-bar"></div><div class="mock-row"><i class="mock-box"></i><i class="mock-box"></i><i class="mock-box"></i></div></div></div><div class="creation-copy"><span class="creation-type">AI tool</span><h3>Specialist AI workspace</h3><p>Documents, image generation, smart search and guided automation.</p><div class="creation-tags"><span>AI agents</span><span>Files</span><span>Automation</span></div></div></article>
+    </div>
+    <div class="showcase-foot"><p><strong>Your idea does not need to fit a template.</strong><br>Describe the outcome and keep control of the source code.</p><button type="button" onclick="closeShowcase();if(typeof mode==='function')mode('up')">Start creating →</button></div>
+  </div>
+</div>
 <section class="story">
   <a class="brand" href="https://366industries.com/ai-designer"><span class="mark">⚡</span><span>366 AI Designer<small>by 366 Industries</small></span></a>
   <div class="hero">
@@ -164,6 +231,8 @@ const PAGE_OPEN = `<div class="shell"><div class="glow one"></div><div class="gl
     <div class="capabilities">
       <span class="cap"><b>◆</b> React</span><span class="cap"><b>◆</b> Flutter</span><span class="cap"><b>◆</b> Full-stack</span><span class="cap"><b>◆</b> Games</span><span class="cap"><b>◆</b> AI-powered</span>
     </div>
+    <div class="hero-actions"><button class="explore" type="button" onclick="openShowcase()">Explore creations →</button><button class="watch-demo" type="button" onclick="openShowcase()">See what’s possible</button></div>
+    <div class="mini-showcase"><div class="mini-card"><b class="mini-icon">▦</b><span><strong>Business platforms</strong>Sell, book & manage</span></div><div class="mini-card"><b class="mini-icon">◉</b><span><strong>Mobile experiences</strong>Flutter-ready apps</span></div><div class="mini-card"><b class="mini-icon">✦</b><span><strong>Games & AI tools</strong>From idea to code</span></div></div>
   </div>
   <div class="proof"><span class="proof-line"></span><strong>One easy workspace. Every platform.</strong><span>Bring the idea. We’ll help build it.</span></div>
 </section>
@@ -172,14 +241,16 @@ const PAGE_OPEN = `<div class="shell"><div class="glow one"></div><div class="gl
 
 const PASSWORD_REVEAL = `<button class="reveal" type="button" aria-label="Show password" onclick="revealPassword(this)">◉</button>`;
 
-const PAGE_SCRIPT = `function revealPassword(b){const p=document.getElementById("pw"),show=p.type==="password";p.type=show?"text":"password";b.textContent=show?"◎":"◉";b.setAttribute("aria-label",show?"Hide password":"Show password")}`;
+const PAGE_SCRIPT = `function revealPassword(b){const p=document.getElementById("pw"),show=p.type==="password";p.type=show?"text":"password";b.textContent=show?"◎":"◉";b.setAttribute("aria-label",show?"Hide password":"Show password")}
+function openShowcase(){document.getElementById("showcase").classList.add("open");document.body.style.overflow="hidden";document.querySelector(".showcase-close").focus()}
+function closeShowcase(e){if(e&&e.target!==document.getElementById("showcase"))return;document.getElementById("showcase").classList.remove("open");document.body.style.overflow="";}`;
 
 const LOGIN_PAGE = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#08090f"><title>366 AI Designer — Private access</title>
 <style>${PAGE_STYLE}</style></head>
 <body>${PAGE_OPEN}<form onsubmit="return go(event)"><div class="form-top"><h2>Enter the build studio</h2><p>Private access for the 366 development team.</p></div>
 <label class="field"><span class="field-label">Team password</span><span class="input-wrap"><input class="password-input" type="password" id="pw" name="password" autocomplete="current-password" placeholder="Enter your access password" autofocus>${PASSWORD_REVEAL}</span></label>
-<button class="submit" id="goBtn">Enter AI Designer →</button><p class="err" id="err" role="alert"></p><p class="terms">Authorized team members only. Your session is protected using a secure, HTTP-only cookie.</p><a class="brand-home" href="https://366industries.com/ai-designer">← Back to 366 Industries</a></form></main></div>
+<button class="submit" id="goBtn">Enter AI Designer →</button><p class="err" id="err" role="alert"></p><p class="terms">Authorized team members only. Your session is protected using a secure, HTTP-only cookie.</p><button class="examples-link" type="button" onclick="openShowcase()">See examples of what you can create</button><a class="brand-home" href="https://366industries.com/ai-designer">← Back to 366 Industries</a></form></main></div>
 <script>${PAGE_SCRIPT};async function go(e){e.preventDefault();const b=document.getElementById("goBtn");b.disabled=true;b.textContent="Opening your workspace…";
 const r=await fetch("/api/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({password:document.getElementById("pw").value})});
 if(r.ok)location.reload();else{document.getElementById("err").textContent="That password is not correct. Try again.";b.disabled=false;b.textContent="Enter AI Designer →"}return false;}</script></body></html>`;
@@ -195,7 +266,7 @@ const ACCOUNT_PAGE = `<!DOCTYPE html>
 <label class="field"><span class="field-label">Email address</span><input type="email" id="email" name="username" autocomplete="username" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@company.com" autofocus></label>
 <label class="field"><span class="field-label">Password <span id="minHint"></span></span><span class="input-wrap"><input class="password-input" type="password" id="pw" name="password" autocomplete="current-password" placeholder="Enter your password">${PASSWORD_REVEAL}</span></label>
 <label class="field" id="confirmField" style="display:none"><span class="field-label">Confirm password</span><span class="input-wrap"><input class="password-input" type="password" id="confirmPw" name="confirmPassword" autocomplete="new-password" placeholder="Enter the same password again"><button class="reveal" type="button" aria-label="Show confirm password" onclick="revealField(this,'confirmPw')">◉</button></span></label>
-<button class="submit" id="goBtn">Open my workspace →</button><p class="err" id="err" role="alert"></p><p class="ok" id="ok" role="status"></p><p class="terms">By continuing, you agree to use 366 AI Designer responsibly and protect your account credentials.</p><a class="brand-home" href="https://366industries.com/ai-designer">← Back to 366 Industries</a></form></main></div>
+<button class="submit" id="goBtn">Open my workspace →</button><p class="err" id="err" role="alert"></p><p class="ok" id="ok" role="status"></p><p class="terms">By continuing, you agree to use 366 AI Designer responsibly and protect your account credentials.</p><button class="examples-link" type="button" onclick="openShowcase()">See examples of what you can create</button><a class="brand-home" href="https://366industries.com/ai-designer">← Back to 366 Industries</a></form></main></div>
 <script>
 ${PAGE_SCRIPT};
 function revealField(b,id){const p=document.getElementById(id),show=p.type==="password";p.type=show?"text":"password";b.textContent=show?"◎":"◉";b.setAttribute("aria-label",show?"Hide password":"Show password")}
@@ -239,7 +310,7 @@ if(new URLSearchParams(location.search).get("confirmed")==="1"){document.getElem
  * stays behind auth because it reports which providers are configured.
  */
 const PUBLIC_HEALTH_PATH = "/healthz";
-const PUBLIC_BRAND_ASSET = "/assets/366-tropical-auth-hero.svg";
+const PUBLIC_BRAND_ASSET = "/assets/366-tropical-auth-hero.png";
 
 /**
  * Generated previews carry a separate, rotating credential in their
