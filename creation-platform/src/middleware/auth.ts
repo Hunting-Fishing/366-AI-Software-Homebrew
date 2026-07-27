@@ -240,12 +240,21 @@ if(new URLSearchParams(location.search).get("confirmed")==="1"){document.getElem
  */
 const PUBLIC_HEALTH_PATH = "/healthz";
 
+/**
+ * Generated previews carry a separate, rotating credential in their
+ * /live/<token>/ path. They cannot use the platform session cookie
+ * because the iframe intentionally has an opaque sandboxed origin.
+ * The live route validates its own token and returns 404 for stale or
+ * incorrect credentials.
+ */
+const PREVIEW_PREFIX = "/live/";
+
 export async function authMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  if (req.path === PUBLIC_HEALTH_PATH) {
+  if (req.path === PUBLIC_HEALTH_PATH || req.path.startsWith(PREVIEW_PREFIX)) {
     next();
     return;
   }
