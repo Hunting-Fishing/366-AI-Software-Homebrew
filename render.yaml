@@ -14,7 +14,7 @@
 
 services:
   - type: web
-    name: creation-platform
+    name: 366-ai-designer
     runtime: docker
     # The platform lives in a subfolder of the monorepo.
     rootDir: creation-platform
