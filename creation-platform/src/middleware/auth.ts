@@ -235,12 +235,28 @@ return false;}</script></body></html>`;
  */
 const PUBLIC_HEALTH_PATH = "/healthz";
 
+/**
+ * The preview is served under /live/<token>/ and carries its own
+ * credential in that path.
+ *
+ * It cannot use the session cookie. The preview iframe is sandboxed
+ * without allow-same-origin so that generated code cannot reach the
+ * platform, and that gives the frame an opaque origin — which sends no
+ * cookies at all. Left behind this middleware, every module the app
+ * imports came back 401 and the preview never ran.
+ *
+ * So the route is exempt here and validates its own token instead
+ * (routes/live.ts). A wrong or stale token is a 404, and the token
+ * rotates on every build.
+ */
+const PREVIEW_PREFIX = "/live/";
+
 export async function authMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  if (req.path === PUBLIC_HEALTH_PATH) {
+  if (req.path === PUBLIC_HEALTH_PATH || req.path.startsWith(PREVIEW_PREFIX)) {
     next();
     return;
   }
