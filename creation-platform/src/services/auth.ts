@@ -74,9 +74,12 @@ async function errText(res: Response): Promise<string> {
 export async function signup(
   email: string,
   password: string,
-  displayName?: string
+  displayName?: string,
+  emailRedirectTo?: string
 ): Promise<SignupResult> {
-  const res = await fetch(base() + "/signup", {
+  const signupUrl = new URL(base() + "/signup");
+  if (emailRedirectTo) signupUrl.searchParams.set("redirect_to", emailRedirectTo);
+  const res = await fetch(signupUrl, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({

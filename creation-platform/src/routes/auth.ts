@@ -29,9 +29,10 @@ export function authRouter(): Router {
       res.status(400).json({ error: "Accounts are not enabled on this server" });
       return;
     }
-    const { email, password, displayName } = req.body as {
+    const { email, password, confirmPassword, displayName } = req.body as {
       email?: string;
       password?: string;
+      confirmPassword?: string;
       displayName?: string;
     };
     if (!email || !password) {
@@ -42,8 +43,15 @@ export function authRouter(): Router {
       res.status(400).json({ error: "Password must be at least 6 characters" });
       return;
     }
+    if (password !== confirmPassword) {
+      res.status(400).json({ error: "Passwords do not match" });
+      return;
+    }
     try {
-      const result = await signup(email, password, displayName);
+      const configuredOrigin = process.env.PUBLIC_APP_URL?.replace(/\/$/, "");
+      const requestOrigin = `${req.headers["x-forwarded-proto"] || req.protocol}://${req.get("host")}`;
+      const emailRedirectTo = `${configuredOrigin || requestOrigin}/?confirmed=1`;
+      const result = await signup(email, password, displayName, emailRedirectTo);
       if (result.session) {
         setSessionCookies(req, res, result.session.accessToken, result.session.refreshToken);
         res.json({ user: result.session.user });

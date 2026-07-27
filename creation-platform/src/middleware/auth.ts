@@ -79,65 +79,65 @@ function expectedToken(pw: string): string {
 //     #6c7bff measured 3.55:1 and failed WCAG AA
 //   - 16px inputs, or iOS zooms the page on focus and the layout jumps
 //   - safe-area padding for notched devices
-const PAGE_STYLE = `:root{color-scheme:dark;--ink:#f7f7fb;--muted:#a7a8b7;--violet:#8b5cf6;--blue:#5367ff;--line:rgba(255,255,255,.1);--panel:rgba(18,19,29,.8)}
+const PAGE_STYLE = `:root{color-scheme:light;--ink:#153d3d;--muted:#607c77;--teal:#087f78;--coral:#f18462;--sand:#fff8e9;--line:rgba(20,91,85,.14);--panel:rgba(255,253,246,.88)}
 *{box-sizing:border-box}
-html{background:#08090f}
-body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#08090f;color:var(--ink);min-height:100vh;min-height:100dvh;margin:0;-webkit-text-size-adjust:100%;overflow-x:hidden}
+html{background:#eef9f4}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(135deg,#fff8e9,#e9f8f3);color:var(--ink);min-height:100vh;min-height:100dvh;margin:0;-webkit-text-size-adjust:100%;overflow-x:hidden}
 button,input{font:inherit}
 button{cursor:pointer}
-.shell{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1.12fr) minmax(420px,.88fr);min-height:100vh;min-height:100dvh;overflow:hidden}
+.shell{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1.16fr) minmax(420px,.84fr);min-height:100vh;min-height:100dvh;overflow:hidden}
 .glow{position:absolute;z-index:-2;border-radius:999px;filter:blur(100px);pointer-events:none;opacity:.42}
-.glow.one{width:520px;height:520px;background:#5424d6;top:-240px;left:24%}
-.glow.two{width:480px;height:480px;background:#174bd5;right:-250px;bottom:-240px;opacity:.3}
+.glow.one{width:520px;height:520px;background:#ffd89d;top:-240px;left:24%}
+.glow.two{width:480px;height:480px;background:#72d8cb;right:-250px;bottom:-240px;opacity:.34}
 .noise{position:absolute;inset:0;z-index:-1;opacity:.028;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.9'/%3E%3C/svg%3E")}
-.story{position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:46px clamp(38px,6vw,96px) 52px;min-height:100vh;min-height:100dvh;border-right:1px solid var(--line)}
+.story{position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:46px clamp(38px,6vw,96px) 52px;min-height:100vh;min-height:100dvh;border-right:1px solid rgba(255,255,255,.28);background:linear-gradient(90deg,rgba(5,63,62,.74),rgba(7,91,86,.34)),url("/assets/366-tropical-auth-hero.svg") center/cover no-repeat;color:#fff}
 .brand{display:inline-flex;align-items:center;gap:12px;color:#fff;text-decoration:none;font-size:15px;font-weight:750;letter-spacing:-.01em;width:max-content}
-.mark{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:linear-gradient(145deg,#5d6cff,#9a4cf1);box-shadow:0 10px 35px rgba(112,78,255,.38);font-size:19px}
+.mark{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:linear-gradient(145deg,#ffb064,#f27e5f);box-shadow:0 10px 35px rgba(110,55,31,.3);font-size:19px}
 .brand small{display:block;color:#828598;font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;margin-top:2px}
 .hero{max-width:720px;margin:60px 0}
-.eyebrow{display:inline-flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid rgba(140,115,255,.28);background:rgba(116,83,255,.09);border-radius:999px;color:#c9bcff;font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase}
-.eyebrow i{width:7px;height:7px;border-radius:50%;background:#9d7cff;box-shadow:0 0 16px #9d7cff}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid rgba(255,255,255,.36);background:rgba(255,255,255,.14);backdrop-filter:blur(10px);border-radius:999px;color:#fff8de;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.eyebrow i{width:7px;height:7px;border-radius:50%;background:#ffb66f;box-shadow:0 0 16px #ffd09e}
 h1{font-size:clamp(48px,6vw,86px);line-height:.96;letter-spacing:-.065em;margin:24px 0 24px;max-width:780px}
-h1 span{display:block;background:linear-gradient(100deg,#fff 5%,#acb5ff 48%,#b979f5 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
-.lede{max-width:610px;color:#b5b6c4;font-size:clamp(17px,1.55vw,21px);line-height:1.62;margin:0}
+h1 span{display:block;background:linear-gradient(100deg,#fff9dc 5%,#ffd29b 52%,#ff9d76 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{max-width:610px;color:rgba(255,255,255,.88);font-size:clamp(17px,1.55vw,21px);line-height:1.62;margin:0;text-shadow:0 2px 22px rgba(0,41,41,.34)}
 .capabilities{display:flex;flex-wrap:wrap;gap:9px;margin-top:34px}
-.cap{display:flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.035);color:#d6d6df;font-size:13px}
-.cap b{color:#9d8cff;font-size:11px}
-.proof{display:flex;align-items:center;gap:20px;color:#858797;font-size:12px}
-.proof strong{color:#d9dae3;font-size:13px}
-.proof-line{width:46px;height:1px;background:linear-gradient(90deg,#6b5cff,transparent)}
+.cap{display:flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid rgba(255,255,255,.26);border-radius:999px;background:rgba(2,52,52,.22);backdrop-filter:blur(10px);color:#fff;font-size:13px}
+.cap b{color:#ffbd7d;font-size:11px}
+.proof{display:flex;align-items:center;gap:20px;color:rgba(255,255,255,.73);font-size:12px}
+.proof strong{color:#fff;font-size:13px}
+.proof-line{width:46px;height:1px;background:linear-gradient(90deg,#ffbd7d,transparent)}
 .auth-side{display:flex;align-items:center;justify-content:center;padding:40px clamp(24px,5vw,78px)}
-form{position:relative;width:100%;max-width:470px;padding:42px;border:1px solid rgba(255,255,255,.115);border-radius:24px;background:linear-gradient(145deg,rgba(28,29,43,.9),rgba(15,16,25,.82));box-shadow:0 36px 90px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.045);backdrop-filter:blur(24px)}
+form{position:relative;width:100%;max-width:470px;padding:42px;border:1px solid rgba(255,255,255,.9);border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.93),rgba(255,250,238,.86));box-shadow:0 32px 90px rgba(32,103,94,.18),inset 0 1px 0 #fff;backdrop-filter:blur(24px)}
 .form-top{margin-bottom:28px}
 .form-top h2{font-size:30px;line-height:1.15;letter-spacing:-.035em;margin:0 0 9px}
 .form-top p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px;background:rgba(5,6,10,.58);border:1px solid rgba(255,255,255,.07);border-radius:12px;margin-bottom:22px}
-.tabs button{width:100%;min-height:43px;border:0;border-radius:8px;background:transparent;color:#898b9d;font-size:14px;font-weight:650;transition:.2s ease}
-.tabs button:hover{color:#fff}
-.tabs button.on{color:#fff;background:#242636;box-shadow:0 5px 15px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.07)}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px;background:#edf5f1;border:1px solid var(--line);border-radius:13px;margin-bottom:22px}
+.tabs button{width:100%;min-height:43px;border:0;border-radius:9px;background:transparent;color:#68817d;font-size:14px;font-weight:700;transition:.2s ease}
+.tabs button:hover{color:var(--teal)}
+.tabs button.on{color:#fff;background:linear-gradient(135deg,#087f78,#15a195);box-shadow:0 7px 18px rgba(8,127,120,.22)}
 .field{display:block;margin:0 0 15px;text-align:left}
 .field-label{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px;color:#c7c8d3;font-size:12px;font-weight:650}
 .field-label a{color:#9f8cff;text-decoration:none;font-weight:600}
 .input-wrap{position:relative}
-input{display:block;width:100%;min-height:54px;padding:0 15px;border:1px solid rgba(255,255,255,.11);border-radius:11px;background:rgba(7,8,14,.65);color:#fff;font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s,background .2s}
-input::placeholder{color:#66697c}
-input:hover{border-color:rgba(255,255,255,.2)}
-input:focus{border-color:#7e72ff;background:rgba(10,11,19,.9);box-shadow:0 0 0 4px rgba(104,92,255,.13)}
+input{display:block;width:100%;min-height:54px;padding:0 15px;border:1px solid rgba(20,91,85,.18);border-radius:12px;background:rgba(255,255,255,.84);color:#173f3c;font-size:16px;outline:none;transition:border-color .2s,box-shadow .2s,background .2s}
+input::placeholder{color:#91a39f}
+input:hover{border-color:rgba(8,127,120,.4)}
+input:focus{border-color:#159a91;background:#fff;box-shadow:0 0 0 4px rgba(21,154,145,.12)}
 .password-input{padding-right:52px}
 .reveal{position:absolute;right:7px;top:7px;width:40px;height:40px;border:0;border-radius:8px;background:transparent;color:#878a9b;font-size:17px}
 .reveal:hover{color:#fff;background:rgba(255,255,255,.06)}
-.submit{position:relative;width:100%;min-height:54px;margin-top:5px;border:0;border-radius:11px;overflow:hidden;background:linear-gradient(100deg,#5266ff,#8c50f5);color:#fff;font-size:15px;font-weight:750;box-shadow:0 13px 34px rgba(91,77,242,.28);transition:transform .2s,box-shadow .2s,filter .2s}
+.submit{position:relative;width:100%;min-height:54px;margin-top:5px;border:0;border-radius:12px;overflow:hidden;background:linear-gradient(100deg,#087f78,#16a398);color:#fff;font-size:15px;font-weight:800;box-shadow:0 13px 34px rgba(8,127,120,.25);transition:transform .2s,box-shadow .2s,filter .2s}
 .submit:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,.25) 45%,transparent 70%);transform:translateX(-120%);transition:transform .65s}
-.submit:hover{transform:translateY(-2px);box-shadow:0 17px 42px rgba(91,77,242,.4);filter:saturate(1.12)}
+.submit:hover{transform:translateY(-2px);box-shadow:0 17px 42px rgba(8,127,120,.35);filter:saturate(1.08)}
 .submit:hover:before{transform:translateX(120%)}
 .submit:focus-visible,.tabs button:focus-visible,.reveal:focus-visible,.brand-home:focus-visible{outline:2px solid #aaa2ff;outline-offset:3px}
 .submit:disabled{cursor:wait;opacity:.72;transform:none}
 p.err,p.ok{font-size:13px;line-height:1.45;min-height:19px;margin:12px 0 0;text-align:left}
-p.err{color:#ff9aaa}
-p.ok{color:#75dca3}
-.terms{color:#686b7d;font-size:11px;line-height:1.55;margin:20px 0 0;text-align:center}
-.brand-home{display:block;margin-top:22px;color:#8e91a3;font-size:12px;text-align:center;text-decoration:none}
-.brand-home:hover{color:#fff}
+p.err{color:#b74242}
+p.ok{color:#087f78}
+.terms{color:#78908b;font-size:11px;line-height:1.55;margin:20px 0 0;text-align:center}
+.brand-home{display:block;margin-top:22px;color:#557a74;font-size:12px;text-align:center;text-decoration:none}
+.brand-home:hover{color:#087f78}
 .mobile-brand{display:none}
 @media(max-width:900px){
 .shell{display:block;padding:0}
@@ -158,14 +158,14 @@ const PAGE_OPEN = `<div class="shell"><div class="glow one"></div><div class="gl
 <section class="story">
   <a class="brand" href="https://366industries.com/ai-designer"><span class="mark">⚡</span><span>366 AI Designer<small>by 366 Industries</small></span></a>
   <div class="hero">
-    <div class="eyebrow"><i></i> Your idea. Built for real.</div>
-    <h1>From one prompt<br><span>to production.</span></h1>
-    <p class="lede">Create websites, mobile apps, games and software through conversation. Keep your source code. Build without boundaries.</p>
+    <div class="eyebrow"><i></i> Build easy. Dream bigger.</div>
+    <h1>Your calm place<br><span>to create.</span></h1>
+    <p class="lede">Turn a conversation into websites, mobile apps, games and software—with room to breathe and complete ownership of your code.</p>
     <div class="capabilities">
       <span class="cap"><b>◆</b> React</span><span class="cap"><b>◆</b> Flutter</span><span class="cap"><b>◆</b> Full-stack</span><span class="cap"><b>◆</b> Games</span><span class="cap"><b>◆</b> AI-powered</span>
     </div>
   </div>
-  <div class="proof"><span class="proof-line"></span><strong>One workspace. Every platform.</strong><span>Own everything you create.</span></div>
+  <div class="proof"><span class="proof-line"></span><strong>One easy workspace. Every platform.</strong><span>Bring the idea. We’ll help build it.</span></div>
 </section>
 <main class="auth-side">
   <a class="brand mobile-brand" href="https://366industries.com/ai-designer"><span class="mark">⚡</span><span>366 AI Designer<small>by 366 Industries</small></span></a>`;
@@ -194,12 +194,15 @@ const ACCOUNT_PAGE = `<!DOCTYPE html>
 <label class="field" id="nameField" style="display:none"><span class="field-label">Your name</span><input type="text" id="name" name="name" autocomplete="name" placeholder="How should we address you?"></label>
 <label class="field"><span class="field-label">Email address</span><input type="email" id="email" name="username" autocomplete="username" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@company.com" autofocus></label>
 <label class="field"><span class="field-label">Password <span id="minHint"></span></span><span class="input-wrap"><input class="password-input" type="password" id="pw" name="password" autocomplete="current-password" placeholder="Enter your password">${PASSWORD_REVEAL}</span></label>
+<label class="field" id="confirmField" style="display:none"><span class="field-label">Confirm password</span><span class="input-wrap"><input class="password-input" type="password" id="confirmPw" name="confirmPassword" autocomplete="new-password" placeholder="Enter the same password again"><button class="reveal" type="button" aria-label="Show confirm password" onclick="revealField(this,'confirmPw')">◉</button></span></label>
 <button class="submit" id="goBtn">Open my workspace →</button><p class="err" id="err" role="alert"></p><p class="ok" id="ok" role="status"></p><p class="terms">By continuing, you agree to use 366 AI Designer responsibly and protect your account credentials.</p><a class="brand-home" href="https://366industries.com/ai-designer">← Back to 366 Industries</a></form></main></div>
 <script>
 ${PAGE_SCRIPT};
+function revealField(b,id){const p=document.getElementById(id),show=p.type==="password";p.type=show?"text":"password";b.textContent=show?"◎":"◉";b.setAttribute("aria-label",show?"Hide password":"Show password")}
 let m="in";
 function mode(x){m=x;document.getElementById("tabIn").className=x==="in"?"on":"";document.getElementById("tabUp").className=x==="up"?"on":"";
 document.getElementById("nameField").style.display=x==="up"?"block":"none";
+document.getElementById("confirmField").style.display=x==="up"?"block":"none";
 document.getElementById("formTitle").textContent=x==="in"?"Welcome back":"Build what comes next";
 document.getElementById("formCopy").textContent=x==="in"?"Sign in to continue building your next big idea.":"Create your workspace and turn an idea into working software.";
 document.getElementById("minHint").textContent=x==="up"?"· 6+ characters":"";
@@ -211,13 +214,15 @@ document.getElementById("err").textContent="";document.getElementById("ok").text
 async function go(e){e.preventDefault();
 const err=document.getElementById("err"),ok=document.getElementById("ok"),btn=document.getElementById("goBtn");err.textContent="";ok.textContent="";btn.disabled=true;btn.textContent=m==="in"?"Opening your workspace…":"Creating your workspace…";
 const body={email:document.getElementById("email").value.trim(),password:document.getElementById("pw").value};
-if(m==="up")body.displayName=document.getElementById("name").value.trim();
+if(m==="up"){body.displayName=document.getElementById("name").value.trim();body.confirmPassword=document.getElementById("confirmPw").value;if(body.password!==body.confirmPassword){err.textContent="Your passwords do not match.";btn.disabled=false;btn.textContent="Create my workspace →";return false;}}
 const r=await fetch(m==="in"?"/api/auth/login":"/api/auth/signup",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
 const d=await r.json().catch(()=>({}));
-if(r.ok&&d.needsConfirmation){ok.textContent="Account created! Check your email to confirm, then sign in.";mode("in");}
+if(r.ok&&d.needsConfirmation){mode("in");ok.textContent="Account created! Check your inbox and select “Confirm my account.” You’ll return here to sign in.";}
 else if(r.ok)location.reload();
 else{err.textContent=d.error||"Something went wrong. Please try again.";btn.disabled=false;btn.textContent=m==="in"?"Open my workspace →":"Create my workspace →";}
-return false;}</script></body></html>`;
+return false;}
+if(new URLSearchParams(location.search).get("confirmed")==="1"){document.getElementById("ok").textContent="Email confirmed — welcome to 366 AI Designer. Sign in to open your workspace.";history.replaceState({},document.title,"/");}
+</script></body></html>`;
 
 // ---- the middleware -----------------------------------------------
 
@@ -236,18 +241,11 @@ return false;}</script></body></html>`;
 const PUBLIC_HEALTH_PATH = "/healthz";
 
 /**
- * The preview is served under /live/<token>/ and carries its own
- * credential in that path.
- *
- * It cannot use the session cookie. The preview iframe is sandboxed
- * without allow-same-origin so that generated code cannot reach the
- * platform, and that gives the frame an opaque origin — which sends no
- * cookies at all. Left behind this middleware, every module the app
- * imports came back 401 and the preview never ran.
- *
- * So the route is exempt here and validates its own token instead
- * (routes/live.ts). A wrong or stale token is a 404, and the token
- * rotates on every build.
+ * Generated previews carry a separate, rotating credential in their
+ * /live/<token>/ path. They cannot use the platform session cookie
+ * because the iframe intentionally has an opaque sandboxed origin.
+ * The live route validates its own token and returns 404 for stale or
+ * incorrect credentials.
  */
 const PREVIEW_PREFIX = "/live/";
 
