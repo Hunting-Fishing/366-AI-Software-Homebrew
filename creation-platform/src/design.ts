@@ -89,6 +89,31 @@ LAYOUT
 - Generous breathing room: p-6 or p-8 inside cards, gap-4 to gap-6 between items, py-10 or more between page sections.
 - One clear column on mobile, grid on wider screens (grid md:grid-cols-2 lg:grid-cols-3).
 
+FITTING THE SCREEN — content that is cut off or overlapping is the single most common way generated apps look broken
+- NEVER position anything absolutely to place it in the normal flow of a page. Absolute positioning is for a badge on a card corner, a dropdown, a modal — nothing else. A heading placed with absolute/negative margins WILL sit on top of the element above it at some screen size, and it will be a different size on every device. Use flex and grid; let the layout compute itself.
+- Never put a fixed height on anything containing text. h-16 on a heading crops the heading. Use padding and let the box size to its content, or min-h-* if it needs a floor.
+- A full-screen app layout is exactly this shape, and no other:
+    <div class="flex flex-col h-screen">
+      <header class="shrink-0">…</header>
+      <main class="flex-1 overflow-y-auto">…</main>
+      <nav class="shrink-0">…</nav>
+    </div>
+  The middle scrolls; the bar at each end does not. Getting this wrong is why content disappears under a bottom bar.
+- If a bar is fixed or absolute rather than part of that flex column, the scrolling area MUST be padded by at least the bar's height (pb-20 for a 64px bar), or the last item is permanently unreachable.
+- Every element in a bottom navigation bar gets the SAME structure: icon above label, same icon size, same text size, evenly spaced with flex-1. One item with an icon and four without looks like a bug, because it is one.
+- Long text needs truncate (one line) or line-clamp-2 (two). Never let a long name push a layout sideways, and never leave it to be cut mid-letter by overflow-hidden alone.
+- Mind the notch: a bottom bar on a phone needs pb-[env(safe-area-inset-bottom)] or the last row sits under the home indicator.
+- Before you finish, picture the app at 360x640 — a small phone. Does the header overlap anything? Can you reach the last item in every list? Is any text clipped? Fix it now; it is much harder to find later.
+
+SCREENS AND NAVIGATION
+- An app with a bottom bar or tabs has one screen per tab and NO dead tabs. If the bar shows five items, five screens exist and all five render something real. A tab that does nothing is worse than a tab that is absent.
+- Keep the current screen in one piece of state and switch on it. Do not build five separate pages that duplicate the shell:
+    const [screen, setScreen] = useState('home');
+    …
+    {screen === 'home' && <Home />}
+- The active tab must be visibly different — colour AND weight, not colour alone.
+- Every screen needs its own empty state. A tab that opens onto a blank panel reads as broken even when it is working correctly.
+
 COLOUR
 - Pick ONE accent colour and use it only for the primary action and active state. Everything else is neutral (slate/zinc/gray).
 - Never more than one accent. Rainbow UIs read as amateur.

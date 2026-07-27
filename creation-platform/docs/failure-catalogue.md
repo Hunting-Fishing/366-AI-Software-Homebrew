@@ -14,7 +14,7 @@ Every entry has a status:
 - **Detected** — recognised and explained, but someone still has to act.
 - **Open** — known and written down. Nothing stops it yet. **This is the work queue.**
 
-Currently: **16 handled**, **23 detected**, **5 open** — 44 total.
+Currently: **16 handled**, **24 detected**, **5 open** — 45 total.
 
 ## Still open
 
@@ -169,6 +169,16 @@ The generated app is built and served, but does not come up. These are what the 
 **Fix.** Use browser APIs only. No require — use ES import. No process.env — put configuration in a plain exported constant.
 
 **Recognised by.** `(?:process|require|__dirname|Buffer|module) is not defined`
+
+#### Content is cut off or sitting on top of something else
+
+**Detected** · `clipped-layout`
+
+**Cause.** Almost always one of three things: an element positioned absolutely inside the normal flow, a fixed height on a box containing text, or a bottom bar that is not part of the page's flex column so the scrolling area runs underneath it. Nothing throws — the app renders, and a heading is half-hidden behind a header or the last list item cannot be reached.
+
+**Fix.** Lay the screen out as flex flex-col h-screen with a shrink-0 header, a flex-1 overflow-y-auto middle and a shrink-0 bottom bar. Remove absolute positioning from anything that is part of the page flow, and replace fixed heights on text with padding.
+
+**Recognised by.** Nothing — this one has no error message, which is why it is hard to spot.
 
 #### Saving to browser storage was blocked
 

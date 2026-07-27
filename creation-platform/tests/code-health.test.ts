@@ -199,3 +199,43 @@ test("the diff renderer is shared with the History tab", () => {
   // Two diff implementations is two sets of colour bugs.
   assert.match(PAGE, /renderDiff\(pre, before, after\)/);
 });
+
+// ── Fitting the screen ──────────────────────────────────────
+// Reported from a generated game hub: the QUICK PLAY heading sat
+// half-hidden behind the header, content ran under the bottom bar, and
+// one nav item had an icon while four did not. Nothing threw — it
+// rendered, and it looked broken.
+
+test("the rules name the three causes of clipped layout", () => {
+  // Absolute positioning in the flow, fixed heights on text, and a
+  // bottom bar outside the flex column. Every clipped layout is one of
+  // these three.
+  assert.match(DESIGN_RULES, /NEVER position anything absolutely/);
+  assert.match(DESIGN_RULES, /Never put a fixed height on anything containing text/);
+  assert.match(DESIGN_RULES, /disappears under a bottom bar/);
+});
+
+test("the rules give the exact full-screen shape, not a principle", () => {
+  // "Use flexbox properly" is advice. A layout to copy is a rule.
+  assert.match(DESIGN_RULES, /flex flex-col h-screen/);
+  assert.match(DESIGN_RULES, /flex-1 overflow-y-auto/);
+  assert.match(DESIGN_RULES, /shrink-0/);
+});
+
+test("the rules cover the small-screen realities", () => {
+  assert.match(DESIGN_RULES, /safe-area-inset-bottom/, "a bottom bar under the home indicator");
+  assert.match(DESIGN_RULES, /line-clamp-2|truncate/, "long names must not push a layout sideways");
+  assert.match(DESIGN_RULES, /360x640/, "there must be a concrete size to picture");
+});
+
+test("a nav bar cannot have one item with an icon and four without", () => {
+  // Exactly what the screenshot showed, and it reads as a bug because
+  // it is one.
+  assert.match(DESIGN_RULES, /SAME structure: icon above label/);
+});
+
+test("tabs must lead somewhere", () => {
+  // Five tabs and two screens is the other half of the same problem.
+  assert.match(DESIGN_RULES, /NO dead tabs/);
+  assert.match(DESIGN_RULES, /Every screen needs its own empty state/);
+});

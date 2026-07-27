@@ -205,6 +205,17 @@ export const FAILURES: FailureMode[] = [
     status: "detected",
   },
 
+  {
+    id: "clipped-layout",
+    area: "preview",
+    title: "Content is cut off or sitting on top of something else",
+    signature: null,
+    cause:
+      "Almost always one of three things: an element positioned absolutely inside the normal flow, a fixed height on a box containing text, or a bottom bar that is not part of the page's flex column so the scrolling area runs underneath it. Nothing throws — the app renders, and a heading is half-hidden behind a header or the last list item cannot be reached.",
+    fix: "Lay the screen out as flex flex-col h-screen with a shrink-0 header, a flex-1 overflow-y-auto middle and a shrink-0 bottom bar. Remove absolute positioning from anything that is part of the page flow, and replace fixed heights on text with padding.",
+    status: "detected",
+  },
+
   // ── Preview: environment ─────────────────────────────────
   {
     id: "storage-blocked",
