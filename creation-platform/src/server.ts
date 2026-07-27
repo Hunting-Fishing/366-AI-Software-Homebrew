@@ -23,7 +23,8 @@ import { availableVideoProviders } from "./providers/videos.js";
 import { FAILURES } from "./failures.js";
 import { integrationsRouter } from "./routes/integrations.js";
 import { canExecute } from "./services/sandbox.js";
-import { ROLES, TIERS, MODELS } from "./models.js";
+import { ROLES, TIERS, MODELS, modelForTier, type Tier } from "./models.js";
+import { streamGenerate } from "./providers/index.js";
 import { CONNECTORS, CATEGORIES } from "./connectors.js";
 import { projectHealth, refactorPrompt, FILE_LIMIT, FILE_COMFORTABLE, FN_COMFORTABLE } from "./codeHealth.js";
 import type { ProjectFile } from "./lib/files.js";
@@ -124,6 +125,32 @@ app.post("/api/code-health", (req, res) => {
       ? refactorPrompt(health.worst[0]) + "\n\n" + contractBrief(extractContracts(files ?? []))
       : null,
   });
+});
+
+// Prove a provider works without spending a build on finding out.
+// Sends a handful of tokens and reports exactly what came back — which
+// matters most when credits are the reason you are switching provider.
+app.post("/api/models/test", async (req, res) => {
+  const { provider, tier } = req.body as { provider?: string; tier?: string };
+  const t = (TIERS.find((x) => x.id === tier)?.id ?? "fast") as Tier;
+  const p = provider && provider in MODELS ? provider : "anthropic";
+  const model = modelForTier(p, t);
+  const started = Date.now();
+  try {
+    let out = "";
+    for await (const chunk of streamGenerate(p, "Reply with the single word: ready", [
+      { role: "user", content: "ping" },
+    ], model)) {
+      out += chunk;
+      if (out.length > 40) break;   // no need to pay for more than proof
+    }
+    res.json({ ok: true, provider: p, tier: t, model, ms: Date.now() - started, reply: out.trim().slice(0, 60) });
+  } catch (err) {
+    res.json({
+      ok: false, provider: p, tier: t, model, ms: Date.now() - started,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 });
 
 app.use(generateRouter);

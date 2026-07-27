@@ -3170,6 +3170,35 @@ function renderModels() {
     row.appendChild(pSel);
     row.appendChild(tSel);
 
+    // Prove it works without spending a build finding out. Matters
+    // most when credits are the reason you are switching provider.
+    const test = document.createElement("button");
+    setBtn(test, "play", "Test");
+    test.onclick = async () => {
+      test.disabled = true;
+      setBtn(test, "play", "Testing\u2026");
+      try {
+        const r = await fetch("/api/models/test", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ provider: cur.provider, tier: cur.tier }),
+        }).then((x) => x.json());
+        if (r.ok) {
+          setBtn(test, "check", r.ms + "ms");
+          showToast({ kind: "mdl", info: true, title: r.model + " answered in " + r.ms + "ms." });
+          setTimeout(() => clearToasts("mdl"), 3500);
+        } else {
+          setBtn(test, "alert", "Failed");
+          showToast({ kind: "mdl", title: r.model + " is not usable", detail: r.error });
+        }
+      } catch (err) {
+        setBtn(test, "alert", "Failed");
+        showToast({ kind: "mdl", title: "Could not reach the server", detail: err.message });
+      }
+      test.disabled = false;
+    };
+    row.appendChild(test);
+
     if (routing[spec.id]) {
       const reset = document.createElement("button");
       setBtn(reset, "rotate-cw", "Default");
@@ -3180,8 +3209,29 @@ function renderModels() {
     body.appendChild(card);
   }
 
+  // Moving every job to one provider is the thing people actually
+  // want when a bill arrives, and doing it seven times is tedious.
+  const move = document.createElement("div");
+  move.className = "acts";
+  move.style.marginTop = "6px";
+  for (const p of (healthInfo.providers || [])) {
+    if (!p.configured) continue;
+    const b = document.createElement("button");
+    setBtn(b, "sparkles", "All jobs \u2192 " + p.label);
+    b.onclick = () => {
+      for (const spec of roleSpecs) {
+        routing[spec.id] = { ...(routing[spec.id] || {}), provider: p.id };
+      }
+      saveRouting();
+      renderModels();
+    };
+    move.appendChild(b);
+  }
+  body.appendChild(move);
+
   const all = document.createElement("button");
   setBtn(all, "rotate-cw", "Reset everything to defaults");
+  all.style.marginTop = "8px";
   all.onclick = () => { routing = {}; saveRouting(); renderModels(); };
   body.appendChild(all);
 }

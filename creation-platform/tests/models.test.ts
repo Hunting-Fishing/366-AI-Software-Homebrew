@@ -182,3 +182,60 @@ test("the settings screen shows the reasoning, not just the control", () => {
 test("an unconfigured provider cannot be selected", () => {
   assert.match(PAGE, /o\.disabled = !p\.configured/);
 });
+
+// ── OpenAI specifically ─────────────────────────────────────
+// Jordi is switching to OpenAI because Claude credits ran out, so
+// "OpenAI works" stopped being a nice-to-have.
+
+test("the deprecated token parameter is not sent to a reasoning model", async () => {
+  // max_tokens is REJECTED by GPT-5 and the o-series. Sending it does
+  // not degrade gracefully — the request 400s before the model is
+  // reached, so every OpenAI build failed with an error about a
+  // parameter rather than anything to do with the code.
+  const { tokenParam } = await import("../src/providers/openai.js");
+  for (const m of ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5", "o3-mini", "o4-mini"]) {
+    assert.equal(tokenParam(m), "max_completion_tokens", `${m} needs the new parameter`);
+  }
+  for (const m of ["gpt-4.1", "gpt-4o"]) {
+    assert.equal(tokenParam(m), "max_tokens", `${m} predates the change`);
+  }
+});
+
+test("the OpenAI models we default to are the documented ids", () => {
+  // Verified against developers.openai.com, July 2026. A wrong id here
+  // is not a subtle bug — nothing works at all.
+  assert.equal(MODELS.openai.deep, "gpt-5.6-sol");
+  assert.equal(MODELS.openai.balanced, "gpt-5.6-terra");
+  assert.equal(MODELS.openai.fast, "gpt-5.6-luna");
+});
+
+test("a rejected parameter is retried with the other name", () => {
+  // The rule above is right for every model documented today, but
+  // model families are not ours to control, and losing a build to a
+  // parameter name is a maddening failure.
+  const src = fs.readFileSync(new URL("../src/providers/openai.ts", import.meta.url), "utf8");
+  assert.match(src, /Unrecognized request argument/);
+  assert.match(src, /first === "max_tokens" \? "max_completion_tokens" : "max_tokens"/);
+});
+
+test("OpenAI failures explain themselves", () => {
+  const src = fs.readFileSync(new URL("../src/providers/openai.ts", import.meta.url), "utf8");
+  // The three that actually happen: wrong model id, ceiling too high,
+  // and — given why we are here — no credit left.
+  assert.match(src, /OPENAI_MODEL_DEEP/);
+  assert.match(src, /Lower OPENAI_MAX_TOKENS/);
+  assert.match(src, /out of credit/i);
+});
+
+test("a provider can be proved without spending a build", () => {
+  const src = fs.readFileSync(new URL("../src/server.ts", import.meta.url), "utf8");
+  assert.match(src, /"\/api\/models\/test"/);
+  assert.match(src, /out\.length > 40/, "the test must stop as soon as it has proof");
+  assert.match(PAGE, /setBtn\(test, "play", "Test"\)/);
+});
+
+test("every job can be moved to one provider in a click", () => {
+  // What people actually want when a bill arrives; doing it seven
+  // times by hand is tedious enough that it does not get done.
+  assert.match(PAGE, /All jobs \\u2192/);
+});
